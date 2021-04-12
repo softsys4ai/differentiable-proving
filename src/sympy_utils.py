@@ -9,7 +9,7 @@ from logging import getLogger
 import sympy as sp
 from sympy.parsing.sympy_parser import parse_expr
 
-from ..utils import timeout, TimeoutError
+from src.utils import timeout, TimeoutError
 
 
 logger = getLogger()
