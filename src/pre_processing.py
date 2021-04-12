@@ -24,8 +24,8 @@ from sympy.core.cache import clear_cache
 from sympy.integrals.risch import NonElementaryIntegral
 from sympy.calculus.util import AccumBounds
 
-from ..utils import bool_flag
-from ..utils import timeout, TimeoutError
+from src.utils import bool_flag
+from src.utils import timeout, TimeoutError
 from .sympy_utils import remove_root_constant_terms, reduce_coefficients, reindex_coefficients
 from .sympy_utils import extract_non_constant_subtree, simplify_const_with_coeff, simplify_equa_diff, clean_degree2_solution
 from .sympy_utils import remove_mul_const, has_inf_nan, has_I, simplify
