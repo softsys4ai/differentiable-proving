@@ -1,0 +1,20 @@
+Generate data: 
+python main.py --export_data true --batch_size 32 --cpu true --exp_name prim_fwd_data --num_workers 20 --tasks prim_fwd --env_base_seed -1 --n_variables 1 --n_coefficients 0 --leaf_probs "0.75,0,0.25,0" --max_ops 15 --max_int 5 --positive true --max_len 512
+
+Train:
+python main.py --exp_name first_train  --fp16 true --amp 2 --tasks "prim_fwd" --reload_data "prim_fwd,./Dataset/prim_fwd.train,./Dataset/prim_fwd.valid,./Dataset/prim_fwd.test" --reload_size 40000000 --emb_dim 1024 --n_enc_layers 6 --n_dec_layers 6 --n_heads 8 --optimizer "adam,lr=0.0001" --batch_size 32 --epoch_size 300000 --validation_metrics valid_prim_fwd_acc 
+
+Prepare Chameleon:
+
+conda create --name py3.7 python=3.7
+conda env list 
+conda activate py3.7
+
+conda install pytorch==1.4.0 torchvision==0.5.0 cudatoolkit=10.1 -c pytorch
+conda install sympy
+conda install numpy
+
+in transformers: 
+git clone https://github.com/NVIDIA/apex
+cd apex
+pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
