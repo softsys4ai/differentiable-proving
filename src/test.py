@@ -117,6 +117,11 @@ print('batched input shape:', x.shape)
 print('batched output shape:', y.shape)
 # each column is showing one training example
 
+if torch.cuda.is_available():
+    device = 'cuda'
+else:
+    device = 'cpu
+
 gpt2 = GPT2Model.from_pretrained('gpt2')
 in_layer = nn.Embedding(len(env.word2id), 768)
 out_layer = nn.Linear(768, len(env.word2id))
@@ -134,11 +139,15 @@ optimizer = torch.optim.Adam(parameters)
 loss_fn = nn.CrossEntropyLoss()
 
 for layer in (gpt2, in_layer, out_layer):
+    layer.to(device=device)
     layer.train()
 
 accuracies = list()
-for i in range(1):
+for i in range(5):
     for (x, x_len), (y, y_len), nb_ops in loader:
+
+        x = x.to(device = device)
+        y = y.to(device = device)
 
         embeddings = in_layer(x.reshape(1, -1))
         hidden_state = gpt2(inputs_embeds=embeddings).last_hidden_state[:, :]
