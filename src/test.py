@@ -46,22 +46,33 @@ def read_data(path):
     return data
 
 
-def batch_sequences(sequences, env):
+def batch_sequences(x, y, env):
     """
     Take as input a list of n sequences (torch.LongTensor vectors) and return
     a tensor of size (slen, n) where slen is the length of the longest
     sentence, and a vector lengths containing the length of each sentence.
     """
-    lengths = torch.LongTensor([len(s) + 2 for s in sequences])
-    sent = torch.LongTensor(lengths.max().item(), lengths.size(0)).fill_(env.pad_index)
-    assert lengths.min().item() > 2
+    lengths_x = torch.LongTensor([len(s) + 2 for s in x])
+    lengths_y = torch.LongTensor([len(s) + 2 for s in y])
+    max_length = max(lengths_x.max().item(), lengths_y.max().item())
+    sent_x = torch.LongTensor(
+        max_length, lengths_x.size(0)).fill_(env.pad_index)
+    sent_y = torch.LongTensor(
+        max_length, lengths_y.size(0)).fill_(env.pad_index)
+    assert lengths_x.min().item() > 2
+    assert lengths_y.min().item() > 2
 
-    sent[0] = env.eos_index
-    for i, s in enumerate(sequences):
-        sent[1:lengths[i] - 1, i].copy_(s)
-        sent[lengths[i] - 1, i] = env.eos_index
+    sent_x[0] = env.eos_index
+    for i, s in enumerate(x):
+        sent_x[1:lengths_x[i] - 1, i].copy_(s)
+        sent_x[lengths_x[i] - 1, i] = env.eos_index
 
-    return sent, lengths
+    sent_y[0] = env.eos_index
+    for i, s in enumerate(y):
+        sent_y[1:lengths_y[i] - 1, i].copy_(s)
+        sent_y[lengths_y[i] - 1, i] = env.eos_index
+
+    return sent_x, sent_y, max_length
 
 
 def collate_fn(elements):
@@ -70,49 +81,16 @@ def collate_fn(elements):
     """
     x, y = zip(*elements)
     nb_ops = [sum(int(word in env.OPERATORS) for word in seq) for seq in x]
-    x = [torch.LongTensor([env.word2id[w] for w in seq if w in env.word2id]) for seq in x]
-    y = [torch.LongTensor([env.word2id[w] for w in seq if w in env.word2id]) for seq in y]
-    x, x_len = batch_sequences(x, env)
-    y, y_len = batch_sequences(y, env)
-    return (x, x_len), (y, y_len), torch.LongTensor(nb_ops)
-
-
-def predict(tensor, pred_mask, y, get_scores, emb_dim):
-    """
-    Given the last hidden state, compute word scores and/or the loss.
-        `pred_mask` is a ByteTensor of shape (slen, bs), filled with 1 when
-            we need to predict a word
-        `y` is a LongTensor of shape (pred_mask.sum(),)
-        `get_scores` is a boolean specifying whether we need to return scores
-    """
-    x = tensor[pred_mask.unsqueeze(-1).expand_as(tensor)].view(-1, emb_dim)
-    assert (y == env.pad_index).sum().item() == 0
-    scores = proj(x).view(-1, len(env.id2word))
-    loss = F.cross_entropy(scores, y, reduction='mean')
-    return scores, loss
-
-
-def train_batch(x1, len1, x2, len2, params, emb_dim, optimizer):
-    # target words to predict
-    alen = torch.arange(len2.max(), dtype=torch.long, device=len2.device)
-    pred_mask = alen[:, None] < len2[None] - 1  # do not predict anything given the last target word
-    y = x2[1:].masked_select(pred_mask[:-1])
-    assert len(y) == (len2 - 1).sum().item()
-
-    embeddings = in_layer(x.reshape(1, -1))
-    out = gpt2(inputs_embeds=embeddings)
-    _, loss = predict(tensor=out, pred_mask=pred_mask, y=y, get_scores=False, emb_dim=emb_dim)
-    print(loss.item())
-
-    optimizer.zero_grad()
-    # Calculate the gradients
-    loss.backward()
-    # Update the parameters
-    optimizer.step()
+    x = [torch.LongTensor([env.word2id[w]
+                          for w in seq if w in env.word2id]) for seq in x]
+    y = [torch.LongTensor([env.word2id[w]
+                          for w in seq if w in env.word2id]) for seq in y]
+    x, y, length = batch_sequences(x, y, env)
+    return (x, length), (y, length), torch.LongTensor(nb_ops)
 
 
 env = build_env(params)
-path = 'C:\\Users\\Kimia\\Desktop\\DeskTop\\5 Term\\Research UCS\\transformer\\symbolic math\\Code\\differentiable-proving\\sample_data\\prim_fwd.txt'
+path = 'sample_data/prim_fwd.txt'
 data = read_data(path)
 for i in range(len(data)):
     data[i] = tuple([sent.split(" ") for sent in data[i]])
@@ -120,7 +98,7 @@ for i in range(len(data)):
 # data[0] would be like :
 # data[0]
 # ["sub Y' pow x INT+ 2", 'mul div INT+ 1 INT+ 3 pow x INT+ 3']
-loader = DataLoader(data, batch_size=32, shuffle=False, collate_fn=collate_fn)
+loader = DataLoader(data, batch_size=1, shuffle=False, collate_fn=collate_fn)
 # loader.dataset
 # Go through one loop
 counter = 0
@@ -140,7 +118,8 @@ print('batched output shape:', y.shape)
 # each column is showing one training example
 
 gpt2 = GPT2Model.from_pretrained('gpt2')
-in_layer = nn.Embedding(1, 768)
+in_layer = nn.Embedding(len(env.word2id), 768)
+out_layer = nn.Linear(768, len(env.word2id))
 
 for name, param in gpt2.named_parameters():
     # freeze all parameters except the layer norm and positional embeddings
@@ -149,14 +128,31 @@ for name, param in gpt2.named_parameters():
     else:
         param.requires_grad = False
 
-parameters = list(gpt2.parameters()) + list(in_layer.parameters())
+parameters = list(gpt2.parameters()) + \
+    list(in_layer.parameters()) + list(out_layer.parameters())
+optimizer = torch.optim.Adam(parameters)
+loss_fn = nn.CrossEntropyLoss()
 
-for layer in (gpt2, in_layer):
+for layer in (gpt2, in_layer, out_layer):
     layer.train()
 
-emb_dim = 768
-proj = nn.Linear(emb_dim, params.n_words, bias=True)
-optimizer = torch.optim.Adam(parameters)
+accuracies = list()
+for i in range(1):
+    for (x, x_len), (y, y_len), nb_ops in loader:
 
-for (x, x_len), (y, y_len), nb_ops in loader:
-    train_batch(x, x_len, y, y_len, params, emb_dim, optimizer)
+        embeddings = in_layer(x.reshape(1, -1))
+        hidden_state = gpt2(inputs_embeds=embeddings).last_hidden_state[:, :]
+        logits = out_layer(hidden_state)[0]
+        loss = loss_fn(logits, y.reshape(y.shape[0]))
+        accuracies.append((logits.argmax(dim=-1) == y).float().mean().item())
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if len(accuracies) % 500 == 0:
+            accuracy = sum(accuracies[-50:]) / len(accuracies[-50:])
+            print(f'Samples: {len(accuracies)}, Accuracy: {accuracy}')
+
+print(logits)
+print(f'Final accuracy: {sum(accuracies[-50:]) / len(accuracies[-50:])}')
