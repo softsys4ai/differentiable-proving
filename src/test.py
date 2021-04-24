@@ -120,7 +120,7 @@ print('batched output shape:', y.shape)
 if torch.cuda.is_available():
     device = 'cuda'
 else:
-    device = 'cpu
+    device = 'cpu'
 
 gpt2 = GPT2Model.from_pretrained('gpt2')
 in_layer = nn.Embedding(len(env.word2id), 768)
