@@ -1,7 +1,7 @@
 # differentiable-proving
 Codes for the Symbolic Math project 
 
-Run `sym_math_initial.py`
+Run `sym_math.py`
 
 ## Dependencies
 
