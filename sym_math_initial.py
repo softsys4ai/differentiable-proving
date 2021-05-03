@@ -40,7 +40,8 @@ params = params = AttrDict({
 
 def read_data(path):
     with io.open(path, mode='r', encoding='utf-8') as f:
-        lines = [line.rstrip().split('|') for line in f]
+        head = [next(f) for x in range(10000)]
+        lines = [line.rstrip().split('|') for line in head]
         data = [xy.split('\t') for _, xy in lines]
         data = [xy for xy in data if len(xy) == 2]
     return data
@@ -143,17 +144,19 @@ for layer in (gpt2, in_layer, out_layer):
     layer.train()
 
 accuracies = list()
-for i in range(5):
+n_epochs = 5
+for i in range(n_epochs):
     for (x, x_len), (y, y_len), nb_ops in loader:
 
-        x = x.to(device = device)
-        y = y.to(device = device)
+        x = x.to(device=device)
+        y = y.to(device=device)
 
         embeddings = in_layer(x.reshape(1, -1))
         hidden_state = gpt2(inputs_embeds=embeddings).last_hidden_state[:, :]
         logits = out_layer(hidden_state)[0]
-        loss = loss_fn(logits, y.reshape(y.shape[0]))
-        accuracies.append((logits.argmax(dim=-1) == y).float().mean().item())
+        loss = loss_fn(logits, y.reshape(-1))
+        accuracies.append(
+            (logits.argmax(dim=-1) == y.reshape(-1)).float().mean().item())
 
         optimizer.zero_grad()
         loss.backward()
