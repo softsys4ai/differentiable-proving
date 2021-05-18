@@ -137,7 +137,7 @@ for name, param in gpt2.named_parameters():
 parameters = list(gpt2.parameters()) + \
     list(in_layer.parameters()) + list(out_layer.parameters())
 optimizer = torch.optim.Adam(parameters)
-loss_fn = nn.CrossEntropyLoss()
+loss_fn = nn.CrossEntropyLoss(reduction = 'mean')
 
 for layer in (gpt2, in_layer, out_layer):
     layer.to(device=device)
