@@ -1,6 +1,6 @@
 import io
 import torch
-
+import random
 from src.utils import AttrDict
 from src.envs import build_env
 from src.model import build_modules
@@ -99,7 +99,7 @@ for i in range(len(data)):
 # data[0] would be like :
 # data[0]
 # ["sub Y' pow x INT+ 2", 'mul div INT+ 1 INT+ 3 pow x INT+ 3']
-loader = DataLoader(data, batch_size=1, shuffle=False, collate_fn=collate_fn)
+loader = DataLoader(data, batch_size=25, shuffle=False, collate_fn=collate_fn)
 # loader.dataset
 # Go through one loop
 counter = 0
@@ -143,28 +143,36 @@ for layer in (gpt2, in_layer, out_layer):
     layer.to(device=device)
     layer.train()
 
+
 accuracies = list()
-n_epochs = 5
-for i in range(n_epochs):
-    for (x, x_len), (y, y_len), nb_ops in loader:
+num_epoch = 10
+for i in range(num_epoch):
 
-        x = x.to(device=device)
-        y = y.to(device=device)
+  random.shuffle(data)
+  
+  for (x, x_len), (y, y_len), nb_ops in loader:
 
-        embeddings = in_layer(x.reshape(1, -1))
-        hidden_state = gpt2(inputs_embeds=embeddings).last_hidden_state[:, :]
-        logits = out_layer(hidden_state)[0]
-        loss = loss_fn(logits, y.reshape(-1))
-        accuracies.append(
-            (logits.argmax(dim=-1) == y.reshape(-1)).float().mean().item())
+      x = x.to(device = device)
+      y = y.to(device = device)
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+      embeddings = in_layer(x.reshape(x.shape[1], x.shape[0]))
+      hidden_state = gpt2(inputs_embeds=embeddings).last_hidden_state[:,:]
+      logits = out_layer(hidden_state)
+      logits = logits.reshape(logits.shape[0], logits.shape[2], logits.shape[1])
+      y = y.reshape(y.shape[1], y.shape[0])
+      loss = loss_fn(logits, y)
 
-        if len(accuracies) % 500 == 0:
-            accuracy = sum(accuracies[-50:]) / len(accuracies[-50:])
-            print(f'Samples: {len(accuracies)}, Accuracy: {accuracy}')
+      for i in range(logits.shape[0]):
+        accuracies.append((logits[i,:,:].argmax(dim=0) == y[i, :]).float().mean().item())
 
-print(logits)
-print(f'Final accuracy: {sum(accuracies[-50:]) / len(accuracies[-50:])}')
+      optimizer.zero_grad()
+      loss.backward()
+      optimizer.step()
+
+
+      if len(accuracies) % 1000 == 0:
+          accuracy = sum(accuracies[-1000:]) / len(accuracies[-1000:])
+          print(f'Samples: {len(accuracies)}, Accuracy: {accuracy}')
+
+    
+print(f'Final accuracy: {sum(accuracies[-1000:]) / len(accuracies[-1000:])}')
