@@ -1,7 +1,7 @@
 # differentiable-proving
 Codes for the Symbolic Math project 
 
-Run `sym_math.py` (Python code) or `sym_math.ipynb` (Jupiter notebook)
+Run `sym_math_FPT.py` (Python code) or `sym_math_FPT.ipynb` (Jupiter notebook)
 
 ## Dependencies
 
