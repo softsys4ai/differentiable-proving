@@ -93,6 +93,12 @@ def compute_metrics(eval_preds):
     result = {k: round(v, 4) for k, v in result.items()}
     return result
 
+def convert_to_sympy(s):
+    tok = s.split()
+    hyp = env.prefix_to_infix(tok)     
+    hyp = env.infix_to_sympy(hyp)
+    return hyp
+
 # Set up and Loading the Data
 
 
@@ -123,8 +129,8 @@ params = params = AttrDict({
 })
 
 env = build_env(params)
-path = "prim_fwd.train"
-data = read_data(path, 1000)
+path = "sample_data/prim_fwd.train"
+data = read_data(path, 10000)
 
 """# Pre-Processing the Data
 Here we pre-process our data, so that it matches the format in our reference code: [Hugging Face Translation Task Example](https://github.com/huggingface/notebooks/blob/master/examples/translation.ipynb)
@@ -148,7 +154,7 @@ train_dataset = Dataset.from_pandas(df2)
 
 """## Validation Dataset"""
 
-path2 = "prim_fwd.valid"
+path2 = "sample_data/prim_fwd.valid"
 data2 = read_data(path2, 1000)
 valid_text = []
 valid_label = []
@@ -166,6 +172,26 @@ for i in range(len(raw_datasets1)):
 df_valid = pd.DataFrame.from_dict(raw_datasets_vlaid['translation'])
 valid_dataset = Dataset.from_pandas(df_valid)
 
+"""## Test  Dataset"""
+
+path3 = "sample_data/prim_fwd.test"
+data3 = read_data(path3, 500)
+test_text = []
+test_label = []
+for i in range(len(data3)):
+    test_text.append(data3[i][0])
+    test_label.append(data3[i][1])
+raw_datasets2 = [{'en': test_text[i], 'ro': test_label[i]}
+                 for i in range(len(test_text))]
+
+raw_datasets_test = {}
+for i in range(len(raw_datasets2)):
+    raw_datasets_test.setdefault('translation', []).append(
+        {'translation': raw_datasets2[i]})
+
+df_test = pd.DataFrame.from_dict(raw_datasets_test['translation'])
+test_dataset = Dataset.from_pandas(df_test)
+
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
 metric = load_metric("sacrebleu")
@@ -181,7 +207,7 @@ else:
 
 """# Create the Final Data Set"""
 
-datasetM = {'train': train_dataset, 'validation': valid_dataset}
+datasetM = {'train': train_dataset, 'validation': valid_dataset, 'test': test_dataset}
 max_input_length = 128
 max_target_length = 128
 source_lang = "en"
@@ -191,12 +217,14 @@ tokenized_datasets_train = datasetM['train'].map(
     preprocess_function_new, batched=True)
 tokenized_datasets_valid = datasetM['validation'].map(
     preprocess_function_new, batched=True)
+tokenized_datasets_test = datasetM['test'].map(
+    preprocess_function_new, batched=True)
 
 """#  Fine-tuning the model"""
 
 model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
-batch_size = 16
+batch_size = 25
 args = Seq2SeqTrainingArguments(
     "test-translation",
     evaluation_strategy="epoch",
@@ -205,7 +233,7 @@ args = Seq2SeqTrainingArguments(
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=3,
-    num_train_epochs=10,
+    num_train_epochs=20,
     predict_with_generate=True,
     fp16=True,
 )
@@ -223,3 +251,57 @@ trainer = Seq2SeqTrainer(
 )
 
 trainer.train()
+
+# Training Evaluation:
+count_train = 0
+for i in range(10000):
+  text = tokenized_datasets_train['translation'][i]['en']
+  input_ids = tokenizer.encode(text, return_tensors="pt")
+  outputs = model.generate(input_ids.to(device = 'cuda'))
+  decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
+  actual = tokenized_datasets_train['translation'][i]['ro']
+  try:
+    actual_s  = convert_to_sympy(actual)
+    decoded_s = convert_to_sympy(decoded)
+    res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
+    if res == 'OK':
+      count_train +=1
+  except:
+    continue
+print(count_train/10000)
+
+# Validation Evaluation:
+count_valid = 0
+for i in range(1000):
+  text = tokenized_datasets_valid['translation'][i]['en']
+  input_ids = tokenizer.encode(text, return_tensors="pt")
+  outputs = model.generate(input_ids.to(device = 'cuda'))
+  decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
+  actual = tokenized_datasets_valid['translation'][i]['ro']
+  try:
+    actual_s  = convert_to_sympy(actual)
+    decoded_s = convert_to_sympy(decoded)
+    res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
+    if res == 'OK':
+      count_valid +=1
+  except:
+    continue
+print(count_valid/1000)
+
+# Test Evaluation:
+count_test = 0
+for i in range(500):
+  text = tokenized_datasets_test['translation'][i]['en']
+  input_ids = tokenizer.encode(text, return_tensors="pt")
+  outputs = model.generate(input_ids.to(device = 'cuda'))
+  decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
+  actual = tokenized_datasets_test['translation'][i]['ro']
+  try:
+    actual_s  = convert_to_sympy(actual)
+    decoded_s = convert_to_sympy(decoded)
+    res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
+    if res == 'OK':
+      count_test +=1
+  except:
+    continue
+print(count_test/500)
