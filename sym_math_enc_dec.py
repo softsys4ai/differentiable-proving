@@ -70,31 +70,27 @@ def postprocess_text(preds, labels):
 
     return preds, labels
 
-
 def compute_metrics(eval_preds):
     preds, labels = eval_preds
     if isinstance(preds, tuple):
         preds = preds[0]
-    decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+    decoded_preds = fast_tokenizer.batch_decode(preds, skip_special_tokens=True)
 
     # Replace -100 in the labels as we can't decode them.
-    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+    labels = np.where(labels != -100, labels, fast_tokenizer.pad_token_id)
+    decoded_labels = fast_tokenizer.batch_decode(labels, skip_special_tokens=True)
 
     # Some simple post-processing
-    decoded_preds, decoded_labels = postprocess_text(
-        decoded_preds, decoded_labels)
+    decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-    result = metric.compute(predictions=decoded_preds,
-                            references=decoded_labels)
+    result = metric.compute(predictions=decoded_preds, references=decoded_labels)
     result = {"bleu": result["score"]}
 
-    prediction_lens = [np.count_nonzero(
-        pred != tokenizer.pad_token_id) for pred in preds]
+    prediction_lens = [np.count_nonzero(pred != fast_tokenizer.pad_token_id) for pred in preds]
     result["gen_len"] = np.mean(prediction_lens)
     result = {k: round(v, 4) for k, v in result.items()}
     return result
-
+    
 def convert_to_sympy(s):
     tok = s.split()
     hyp = env.prefix_to_infix(tok)     
