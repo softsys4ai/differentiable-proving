@@ -45,11 +45,13 @@ from transformers import PreTrainedTokenizerFast
 def preprocess_function_new(examples):
     inputs = [prefix + ex[source_lang] for ex in examples["translation"]]
     targets = [ex[target_lang] for ex in examples["translation"]]
-    model_inputs = fast_tokenizer(inputs, max_length=max_input_length, truncation=True)
+    model_inputs = fast_tokenizer(
+        inputs, max_length=max_input_length, truncation=True)
 
     # Setup the tokenizer for targets
     with fast_tokenizer.as_target_tokenizer():
-        labels = fast_tokenizer(targets, max_length=max_target_length, truncation=True)
+        labels = fast_tokenizer(
+            targets, max_length=max_target_length, truncation=True)
 
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
@@ -70,30 +72,37 @@ def postprocess_text(preds, labels):
 
     return preds, labels
 
+
 def compute_metrics(eval_preds):
     preds, labels = eval_preds
     if isinstance(preds, tuple):
         preds = preds[0]
-    decoded_preds = fast_tokenizer.batch_decode(preds, skip_special_tokens=True)
+    decoded_preds = fast_tokenizer.batch_decode(
+        preds, skip_special_tokens=True)
 
     # Replace -100 in the labels as we can't decode them.
     labels = np.where(labels != -100, labels, fast_tokenizer.pad_token_id)
-    decoded_labels = fast_tokenizer.batch_decode(labels, skip_special_tokens=True)
+    decoded_labels = fast_tokenizer.batch_decode(
+        labels, skip_special_tokens=True)
 
     # Some simple post-processing
-    decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
+    decoded_preds, decoded_labels = postprocess_text(
+        decoded_preds, decoded_labels)
 
-    result = metric.compute(predictions=decoded_preds, references=decoded_labels)
+    result = metric.compute(predictions=decoded_preds,
+                            references=decoded_labels)
     result = {"bleu": result["score"]}
 
-    prediction_lens = [np.count_nonzero(pred != fast_tokenizer.pad_token_id) for pred in preds]
+    prediction_lens = [np.count_nonzero(
+        pred != fast_tokenizer.pad_token_id) for pred in preds]
     result["gen_len"] = np.mean(prediction_lens)
     result = {k: round(v, 4) for k, v in result.items()}
     return result
-    
+
+
 def convert_to_sympy(s):
     tok = s.split()
-    hyp = env.prefix_to_infix(tok)     
+    hyp = env.prefix_to_infix(tok)
     hyp = env.infix_to_sympy(hyp)
     return hyp
 
@@ -132,7 +141,7 @@ data = read_data(path, 10000)
 
 """# Pre-Processing the Data
 Here we pre-process our data, so that it matches the format in our reference code: [Hugging Face Translation Task Example](https://github.com/huggingface/notebooks/blob/master/examples/translation.ipynb)
-## Training Dataset
+# Training Dataset
 """
 train_text = []
 train_label = []
@@ -192,16 +201,17 @@ test_dataset = Dataset.from_pandas(df_test)
 
 """# Tokenizing the Data"""
 tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-trainer = BpeTrainer(special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
+trainer = BpeTrainer(
+    special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
 tokenizer.pre_tokenizer = Whitespace()
-files1 = ['sample_data/prim_fwd.valid'] 
+files1 = ['sample_data/prim_fwd.train']
 tokenizer.train(files1, trainer)
 # to save the tokenizer
-tokenizer.save("tokenizer/gpt2.json")  
+tokenizer.save("tokenizer/gpt2.json")
 fast_tokenizer = PreTrainedTokenizerFast(tokenizer_object=tokenizer)
 fast_tokenizer.pad_token = '[PAD]'
 
-model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"  
+model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
 metric = load_metric("sacrebleu")
 
 if "mbart" in model_checkpoint:
@@ -212,9 +222,10 @@ if model_checkpoint in ["t5-small", "t5-base", "t5-larg", "t5-3b", "t5-11b"]:
 else:
     prefix = """
 
-"""# Create the Final Data Set"""
+"""  # Create the Final Data Set"""
 
-datasetM = {'train': train_dataset, 'validation': valid_dataset, 'test': test_dataset}
+datasetM = {'train': train_dataset,
+            'validation': valid_dataset, 'test': test_dataset}
 max_input_length = 128
 max_target_length = 128
 source_lang = "en"
@@ -231,7 +242,7 @@ tokenized_datasets_test = datasetM['test'].map(
 
 model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
-batch_size = 25
+batch_size = 16
 args = Seq2SeqTrainingArguments(
     "test-translation",
     evaluation_strategy="epoch",
@@ -258,57 +269,69 @@ trainer = Seq2SeqTrainer(
 )
 
 trainer.train()
+torch.save(model, 'models/model1')
 
 # Training Evaluation:
+predicted_labels_train = trainer.predict(tokenized_datasets_train)
 count_train = 0
+count = 0
 for i in range(10000):
-  text = tokenized_datasets_train['translation'][i]['en']
-  input_ids = tokenizer.encode(text, return_tensors="pt")
-  outputs = model.generate(input_ids.to(device = 'cuda'))
-  decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-  actual = tokenized_datasets_train['translation'][i]['ro']
-  try:
-    actual_s  = convert_to_sympy(actual)
-    decoded_s = convert_to_sympy(decoded)
-    res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
-    if res == 'OK':
-      count_train +=1
-  except:
-    continue
-print(count_train/10000)
 
+    decoded = fast_tokenizer.decode(
+        predicted_labels_train.predictions[i], skip_special_tokens=True)
+    actual = tokenized_datasets_train['translation'][i]['ro']
+    try:
+        actual_s = convert_to_sympy(actual)
+        decoded_s = convert_to_sympy(decoded)
+        res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
+        if res == 'OK':
+            count_train += 1
+    except:
+        count += 1
+        continue
+    break
+print(count_train/10000)
+print("invalid count train", count)
 # Validation Evaluation:
+predicted_labels_valid = trainer.predict(tokenized_datasets_valid)
 count_valid = 0
+count = 0
 for i in range(1000):
-  text = tokenized_datasets_valid['translation'][i]['en']
-  input_ids = tokenizer.encode(text, return_tensors="pt")
-  outputs = model.generate(input_ids.to(device = 'cuda'))
-  decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-  actual = tokenized_datasets_valid['translation'][i]['ro']
-  try:
-    actual_s  = convert_to_sympy(actual)
-    decoded_s = convert_to_sympy(decoded)
-    res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
-    if res == 'OK':
-      count_valid +=1
-  except:
-    continue
+
+    decoded = fast_tokenizer.decode(
+        predicted_labels_valid.predictions[i], skip_special_tokens=True)
+    actual = tokenized_datasets_valid['translation'][i]['ro']
+    try:
+        actual_s = convert_to_sympy(actual)
+        decoded_s = convert_to_sympy(decoded)
+        res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
+        if res == 'OK':
+            count_valid += 1
+    except:
+        count += 1
+        continue
+    break
 print(count_valid/1000)
+print("invalid count valid", count)
 
 # Test Evaluation:
-count_test = 0
-for i in range(500):
-  text = tokenized_datasets_test['translation'][i]['en']
-  input_ids = tokenizer.encode(text, return_tensors="pt")
-  outputs = model.generate(input_ids.to(device = 'cuda'))
-  decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-  actual = tokenized_datasets_test['translation'][i]['ro']
-  try:
-    actual_s  = convert_to_sympy(actual)
-    decoded_s = convert_to_sympy(decoded)
-    res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
-    if res == 'OK':
-      count_test +=1
-  except:
-    continue
-print(count_test/500)
+predicted_labels_test = trainer.predict(tokenized_datasets_test)
+count_test= 0
+count = 0
+for i in range(1000):
+
+    decoded = fast_tokenizer.decode(
+        predicted_labels_test.predictions[i], skip_special_tokens=True)
+    actual = tokenized_datasets_test['translation'][i]['ro']
+    try:
+        actual_s = convert_to_sympy(actual)
+        decoded_s = convert_to_sympy(decoded)
+        res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
+        if res == 'OK':
+            count_test += 1
+    except:
+        count += 1
+        continue
+    break
+print(count_test/1000)
+print("invalid count test", count)
