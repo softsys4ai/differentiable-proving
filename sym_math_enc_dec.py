@@ -34,20 +34,22 @@ from src.utils import AttrDict
 from datasets import load_dataset, load_metric
 import sentencepiece
 from transformers.models.bert.modeling_bert import BertLayer
-
+from tokenizers import Tokenizer
+from tokenizers.models import BPE
+from tokenizers.trainers import BpeTrainer
+from tokenizers.pre_tokenizers import Whitespace
+from transformers import PreTrainedTokenizerFast
 # Required Functions
 
 
 def preprocess_function_new(examples):
     inputs = [prefix + ex[source_lang] for ex in examples["translation"]]
     targets = [ex[target_lang] for ex in examples["translation"]]
-    model_inputs = tokenizer(
-        inputs, max_length=max_input_length, truncation=True)
+    model_inputs = fast_tokenizer(inputs, max_length=max_input_length, truncation=True)
 
     # Setup the tokenizer for targets
-    with tokenizer.as_target_tokenizer():
-        labels = tokenizer(
-            targets, max_length=max_target_length, truncation=True)
+    with fast_tokenizer.as_target_tokenizer():
+        labels = fast_tokenizer(targets, max_length=max_target_length, truncation=True)
 
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
@@ -193,17 +195,26 @@ df_test = pd.DataFrame.from_dict(raw_datasets_test['translation'])
 test_dataset = Dataset.from_pandas(df_test)
 
 """# Tokenizing the Data"""
-model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
+tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
+trainer = BpeTrainer(special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
+tokenizer.pre_tokenizer = Whitespace()
+files1 = ['sample_data/prim_fwd.valid'] 
+tokenizer.train(files1, trainer)
+# to save the tokenizer
+tokenizer.save("tokenizer/gpt2.json")  
+fast_tokenizer = PreTrainedTokenizerFast(tokenizer_object=tokenizer)
+fast_tokenizer.pad_token = '[PAD]'
+
+model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"  
 metric = load_metric("sacrebleu")
-tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=False)
 
 if "mbart" in model_checkpoint:
-    tokenizer.src_lang = "en-XX"
-    tokenizer.tgt_lang = "ro-RO"
+    fast_tokenizer.src_lang = "en-XX"
+    fast_tokenizer.tgt_lang = "ro-RO"
 if model_checkpoint in ["t5-small", "t5-base", "t5-larg", "t5-3b", "t5-11b"]:
     prefix = "translate English to Romanian: "
 else:
-    prefix = ""
+    prefix = """
 
 """# Create the Final Data Set"""
 
@@ -238,7 +249,7 @@ args = Seq2SeqTrainingArguments(
     fp16=True,
 )
 
-data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
+data_collator = DataCollatorForSeq2Seq(fast_tokenizer, model=model)
 
 trainer = Seq2SeqTrainer(
     model,
@@ -246,7 +257,7 @@ trainer = Seq2SeqTrainer(
     train_dataset=tokenized_datasets_train,
     eval_dataset=tokenized_datasets_valid,
     data_collator=data_collator,
-    tokenizer=tokenizer,
+    tokenizer=fast_tokenizer,
     compute_metrics=compute_metrics
 )
 
