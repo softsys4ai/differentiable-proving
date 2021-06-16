@@ -1,8 +1,3 @@
-# Dependencies and Intallation
-# !pip install transformers
-# !pip install datasets
-# !pip install sacrebleu
-# !pip install sentencepiece
 from src.envs.sympy_utils import simplify
 from transformers import AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer
 from transformers import AutoTokenizer
@@ -34,23 +29,19 @@ from src.utils import AttrDict
 from datasets import load_dataset, load_metric
 import sentencepiece
 from transformers.models.bert.modeling_bert import BertLayer
-from tokenizers import Tokenizer
-from tokenizers.models import BPE
-from tokenizers.trainers import BpeTrainer
-from tokenizers.pre_tokenizers import Whitespace
-from transformers import PreTrainedTokenizerFast
+
 # Required Functions
 
 
 def preprocess_function_new(examples):
     inputs = [prefix + ex[source_lang] for ex in examples["translation"]]
     targets = [ex[target_lang] for ex in examples["translation"]]
-    model_inputs = fast_tokenizer(
+    model_inputs = tokenizer(
         inputs, max_length=max_input_length, truncation=True)
 
     # Setup the tokenizer for targets
-    with fast_tokenizer.as_target_tokenizer():
-        labels = fast_tokenizer(
+    with tokenizer.as_target_tokenizer():
+        labels = tokenizer(
             targets, max_length=max_target_length, truncation=True)
 
     model_inputs["labels"] = labels["input_ids"]
@@ -77,13 +68,11 @@ def compute_metrics(eval_preds):
     preds, labels = eval_preds
     if isinstance(preds, tuple):
         preds = preds[0]
-    decoded_preds = fast_tokenizer.batch_decode(
-        preds, skip_special_tokens=True)
+    decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
 
     # Replace -100 in the labels as we can't decode them.
-    labels = np.where(labels != -100, labels, fast_tokenizer.pad_token_id)
-    decoded_labels = fast_tokenizer.batch_decode(
-        labels, skip_special_tokens=True)
+    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
     # Some simple post-processing
     decoded_preds, decoded_labels = postprocess_text(
@@ -94,7 +83,7 @@ def compute_metrics(eval_preds):
     result = {"bleu": result["score"]}
 
     prediction_lens = [np.count_nonzero(
-        pred != fast_tokenizer.pad_token_id) for pred in preds]
+        pred != tokenizer.pad_token_id) for pred in preds]
     result["gen_len"] = np.mean(prediction_lens)
     result = {k: round(v, 4) for k, v in result.items()}
     return result
@@ -137,7 +126,7 @@ params = params = AttrDict({
 
 env = build_env(params)
 path = "sample_data/prim_fwd.train"
-data = read_data(path, 10000)
+data = read_data(path, 100000)
 
 """# Pre-Processing the Data
 Here we pre-process our data, so that it matches the format in our reference code: [Hugging Face Translation Task Example](https://github.com/huggingface/notebooks/blob/master/examples/translation.ipynb)
@@ -162,7 +151,7 @@ train_dataset = Dataset.from_pandas(df2)
 """## Validation Dataset"""
 
 path2 = "sample_data/prim_fwd.valid"
-data2 = read_data(path2, 1000)
+data2 = read_data(path2, 9000)
 valid_text = []
 valid_label = []
 for i in range(len(data2)):
@@ -200,29 +189,19 @@ df_test = pd.DataFrame.from_dict(raw_datasets_test['translation'])
 test_dataset = Dataset.from_pandas(df_test)
 
 """# Tokenizing the Data"""
-tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-trainer = BpeTrainer(
-    special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
-tokenizer.pre_tokenizer = Whitespace()
-files1 = ['sample_data/prim_fwd.train']
-tokenizer.train(files1, trainer)
-# to save the tokenizer
-tokenizer.save("tokenizer/gpt2.json")
-fast_tokenizer = PreTrainedTokenizerFast(tokenizer_object=tokenizer)
-fast_tokenizer.pad_token = '[PAD]'
-
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
 metric = load_metric("sacrebleu")
+tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=False)
 
 if "mbart" in model_checkpoint:
-    fast_tokenizer.src_lang = "en-XX"
-    fast_tokenizer.tgt_lang = "ro-RO"
+    tokenizer.src_lang = "en-XX"
+    tokenizer.tgt_lang = "ro-RO"
 if model_checkpoint in ["t5-small", "t5-base", "t5-larg", "t5-3b", "t5-11b"]:
     prefix = "translate English to Romanian: "
 else:
-    prefix = """
+    prefix = ""
 
-"""  # Create the Final Data Set"""
+"""# Create the Final Data Set"""
 
 datasetM = {'train': train_dataset,
             'validation': valid_dataset, 'test': test_dataset}
@@ -240,9 +219,9 @@ tokenized_datasets_test = datasetM['test'].map(
 
 """#  Fine-tuning the model"""
 
-model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
+model = torch.load('models/model2')
 
-batch_size = 16
+batch_size = 25
 args = Seq2SeqTrainingArguments(
     "test-translation",
     evaluation_strategy="epoch",
@@ -251,12 +230,12 @@ args = Seq2SeqTrainingArguments(
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=3,
-    num_train_epochs=20,
+    num_train_epochs=25,
     predict_with_generate=True,
     fp16=True,
 )
 
-data_collator = DataCollatorForSeq2Seq(fast_tokenizer, model=model)
+data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
 
 trainer = Seq2SeqTrainer(
     model,
@@ -264,21 +243,18 @@ trainer = Seq2SeqTrainer(
     train_dataset=tokenized_datasets_train,
     eval_dataset=tokenized_datasets_valid,
     data_collator=data_collator,
-    tokenizer=fast_tokenizer,
+    tokenizer=tokenizer,
     compute_metrics=compute_metrics
 )
 
-trainer.train()
-torch.save(model, 'models/model1')
-
-# Training Evaluation:
-predicted_labels_train = trainer.predict(tokenized_datasets_train)
+# training evaluation
 count_train = 0
 count = 0
-for i in range(10000):
-
-    decoded = fast_tokenizer.decode(
-        predicted_labels_train.predictions[i], skip_special_tokens=True)
+for i in range(100000):
+    text = tokenized_datasets_train['translation'][i]['en']
+    input_ids = tokenizer.encode(text, return_tensors="pt")
+    outputs = model.generate(input_ids.to(device='cuda'))
+    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
     actual = tokenized_datasets_train['translation'][i]['ro']
     try:
         actual_s = convert_to_sympy(actual)
@@ -287,19 +263,21 @@ for i in range(10000):
         if res == 'OK':
             count_train += 1
     except:
+        with open('invalids.txt', 'a') as f:
+            f.write(actual, "ACTUAL \n")
+            f.write(decoded, "DECODED \n")
         count += 1
         continue
-    break
-print(count_train/10000)
-print("invalid count train", count)
+print("Train Accuracy:", count_train/100000)
+print(count)
 # Validation Evaluation:
-predicted_labels_valid = trainer.predict(tokenized_datasets_valid)
 count_valid = 0
 count = 0
-for i in range(1000):
-
-    decoded = fast_tokenizer.decode(
-        predicted_labels_valid.predictions[i], skip_special_tokens=True)
+for i in range(9000):
+    text = tokenized_datasets_valid['translation'][i]['en']
+    input_ids = tokenizer.encode(text, return_tensors="pt")
+    outputs = model.generate(input_ids.to(device='cuda'))
+    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
     actual = tokenized_datasets_valid['translation'][i]['ro']
     try:
         actual_s = convert_to_sympy(actual)
@@ -308,20 +286,22 @@ for i in range(1000):
         if res == 'OK':
             count_valid += 1
     except:
+        with open('invalids.txt', 'a') as f:
+            f.write(actual, "ACTUAL \n")
+            f.write(decoded, "DECODED \n")
+
         count += 1
         continue
-    break
-print(count_valid/1000)
-print("invalid count valid", count)
-
+print("Validation Accuracy:", count_valid/9000)
+print(count)
 # Test Evaluation:
-predicted_labels_test = trainer.predict(tokenized_datasets_test)
-count_test= 0
+count_test = 0
 count = 0
-for i in range(1000):
-
-    decoded = fast_tokenizer.decode(
-        predicted_labels_test.predictions[i], skip_special_tokens=True)
+for i in range(500):
+    text = tokenized_datasets_test['translation'][i]['en']
+    input_ids = tokenizer.encode(text, return_tensors="pt")
+    outputs = model.generate(input_ids.to(device='cuda'))
+    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
     actual = tokenized_datasets_test['translation'][i]['ro']
     try:
         actual_s = convert_to_sympy(actual)
@@ -330,8 +310,10 @@ for i in range(1000):
         if res == 'OK':
             count_test += 1
     except:
+        with open('invalids.txt', 'a') as f:
+            f.write(actual, "ACTUAL \n")
+            f.write(decoded, "DECODED \n")
         count += 1
         continue
-    break
-print(count_test/1000)
-print("invalid count test", count)
+print("Test Accuracy:", count_test/500)
+print(count)
