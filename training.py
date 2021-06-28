@@ -219,7 +219,7 @@ tokenized_datasets_test = datasetM['test'].map(
 
 """#  Fine-tuning the model"""
 
-model = torch.load('models/model2')
+model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
 batch_size = 25
 args = Seq2SeqTrainingArguments(
@@ -246,74 +246,6 @@ trainer = Seq2SeqTrainer(
     tokenizer=tokenizer,
     compute_metrics=compute_metrics
 )
-
-# training evaluation
-count_train = 0
-count = 0
-for i in range(100000):
-    text = tokenized_datasets_train['translation'][i]['en']
-    input_ids = tokenizer.encode(text, return_tensors="pt")
-    outputs = model.generate(input_ids.to(device='cuda'))
-    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    actual = tokenized_datasets_train['translation'][i]['ro']
-    try:
-        actual_s = convert_to_sympy(actual)
-        decoded_s = convert_to_sympy(decoded)
-        res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
-        if res == 'OK':
-            count_train += 1
-    except:
-        with open('invalids.txt', 'a') as f:
-            f.write(actual, "ACTUAL \n")
-            f.write(decoded, "DECODED \n")
-        count += 1
-        continue
-print("Train Accuracy:", count_train/100000)
-print(count)
-# Validation Evaluation:
-count_valid = 0
-count = 0
-for i in range(9000):
-    text = tokenized_datasets_valid['translation'][i]['en']
-    input_ids = tokenizer.encode(text, return_tensors="pt")
-    outputs = model.generate(input_ids.to(device='cuda'))
-    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    actual = tokenized_datasets_valid['translation'][i]['ro']
-    try:
-        actual_s = convert_to_sympy(actual)
-        decoded_s = convert_to_sympy(decoded)
-        res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
-        if res == 'OK':
-            count_valid += 1
-    except:
-        with open('invalids.txt', 'a') as f:
-            f.write(actual, "ACTUAL \n")
-            f.write(decoded, "DECODED \n")
-
-        count += 1
-        continue
-print("Validation Accuracy:", count_valid/9000)
-print(count)
-# Test Evaluation:
-count_test = 0
-count = 0
-for i in range(500):
-    text = tokenized_datasets_test['translation'][i]['en']
-    input_ids = tokenizer.encode(text, return_tensors="pt")
-    outputs = model.generate(input_ids.to(device='cuda'))
-    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    actual = tokenized_datasets_test['translation'][i]['ro']
-    try:
-        actual_s = convert_to_sympy(actual)
-        decoded_s = convert_to_sympy(decoded)
-        res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
-        if res == 'OK':
-            count_test += 1
-    except:
-        with open('invalids.txt', 'a') as f:
-            f.write(actual, "ACTUAL \n")
-            f.write(decoded, "DECODED \n")
-        count += 1
-        continue
-print("Test Accuracy:", count_test/500)
-print(count)
+ 
+trainer.train()
+torch.save(model, 'models/model3')
