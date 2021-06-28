@@ -168,26 +168,6 @@ for i in range(len(raw_datasets1)):
 df_valid = pd.DataFrame.from_dict(raw_datasets_vlaid['translation'])
 valid_dataset = Dataset.from_pandas(df_valid)
 
-"""## Test  Dataset"""
-
-path3 = "sample_data/prim_fwd.test"
-data3 = read_data(path3, 500)
-test_text = []
-test_label = []
-for i in range(len(data3)):
-    test_text.append(data3[i][0])
-    test_label.append(data3[i][1])
-raw_datasets2 = [{'en': test_text[i], 'ro': test_label[i]}
-                 for i in range(len(test_text))]
-
-raw_datasets_test = {}
-for i in range(len(raw_datasets2)):
-    raw_datasets_test.setdefault('translation', []).append(
-        {'translation': raw_datasets2[i]})
-
-df_test = pd.DataFrame.from_dict(raw_datasets_test['translation'])
-test_dataset = Dataset.from_pandas(df_test)
-
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
 metric = load_metric("sacrebleu")
@@ -204,7 +184,7 @@ else:
 """# Create the Final Data Set"""
 
 datasetM = {'train': train_dataset,
-            'validation': valid_dataset, 'test': test_dataset}
+            'validation': valid_dataset}
 max_input_length = 128
 max_target_length = 128
 source_lang = "en"
@@ -213,8 +193,6 @@ target_lang = "ro"
 tokenized_datasets_train = datasetM['train'].map(
     preprocess_function_new, batched=True)
 tokenized_datasets_valid = datasetM['validation'].map(
-    preprocess_function_new, batched=True)
-tokenized_datasets_test = datasetM['test'].map(
     preprocess_function_new, batched=True)
 
 """#  Fine-tuning the model"""
