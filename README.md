@@ -5,12 +5,12 @@ References:
 - [Pretrained Transformers as Universal Computation Engines.](https://github.com/kzl/universal-computation/blob/master/demo.ipynb)
 - [Deep Learning For Symbolic Mathematics](https://github.com/facebookresearch/SymbolicMathematics)
 
-Run `sym_math_FPT.py` (Python code) or `sym_math_FPT.ipynb` (Jupiter notebook)
+Run `training.py` and `evaluator.py` (Python code) or `sym_math_FPT.ipynb` (Jupiter notebook)
 ### Encoder-Decoder Transformer 
 Reference: 
 - [Fine-tuning a model on a translation task (Hugging Face)](https://github.com/huggingface/notebooks/blob/master/examples/translation.ipynb)
 
-Run `sym_math_end_dec.py` (Python code) or `sym_math_enc_dec.ipynb` (Jupiter notebook)
+Run `sym_math_end_dec.py` (Python code) or `sym_math_enc_dec.ipynb` (Jupiter notebook) (in Facebook folder above)
 ## Dependencies
 
 - Python 3
