@@ -98,23 +98,22 @@ def convert_to_sympy(s):
 
 def create_dataset(path, count):
     data = read_data(path, count)
-
-    train_text = []
-    train_label = []
+    text = []
+    label = []
     for i in range(len(data)):
-        train_text.append(data[i][0])
-        train_label.append(data[i][1])
-    raw_datasets = [{'en': train_text[i], 'ro': train_label[i]}
-                    for i in range(len(train_text))]
+        text.append(data[i][0])
+        label.append(data[i][1])
+    raw_datasets = [{'en': text[i], 'ro': label[i]}
+                    for i in range(len(text))]
 
-    raw_datasets = {}
+    raw_datasets_t = {}
     for i in range(len(raw_datasets)):
-        raw_datasets.setdefault('translation', []).append(
+        raw_datasets_t.setdefault('translation', []).append(
             {'translation': raw_datasets[i]})
 
-    df = pd.DataFrame.from_dict(raw_datasets['translation'])
-    train_dataset = Dataset.from_pandas(df)
-    return train_dataset
+    df = pd.DataFrame.from_dict(raw_datasets_t['translation'])
+    dataset = Dataset.from_pandas(df)
+    return dataset
 
 
 def prediction(data, model, tokenizer, number_of_samples):
@@ -209,7 +208,7 @@ tokenized_datasets_test = datasetM['test'].map(
     preprocess_function_new, batched=True)
 
 """#  Fine-tuning the model"""
-
+torch.cuda.empty_cache()
 model = torch.load('models/model_1000')
 
 prediction(data=tokenized_datasets_test, model=model,
