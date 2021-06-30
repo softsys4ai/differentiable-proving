@@ -95,7 +95,26 @@ def convert_to_sympy(s):
     hyp = env.infix_to_sympy(hyp)
     return hyp
 
-# Set up and Loading the Data
+
+def create_dataset(path, count):
+    data = read_data(path, count)
+
+    train_text = []
+    train_label = []
+    for i in range(len(data)):
+        train_text.append(data[i][0])
+        train_label.append(data[i][1])
+    raw_datasets = [{'en': train_text[i], 'ro': train_label[i]}
+                    for i in range(len(train_text))]
+
+    raw_datasets = {}
+    for i in range(len(raw_datasets)):
+        raw_datasets.setdefault('translation', []).append(
+            {'translation': raw_datasets[i]})
+
+    df = pd.DataFrame.from_dict(raw_datasets['translation'])
+    train_dataset = Dataset.from_pandas(df)
+    return train_dataset
 
 
 if torch.cuda.is_available():
@@ -125,48 +144,12 @@ params = params = AttrDict({
 })
 
 env = build_env(params)
-path = "sample_data/prim_fwd.train"
-data = read_data(path, 100000)
-
-"""# Pre-Processing the Data
-Here we pre-process our data, so that it matches the format in our reference code: [Hugging Face Translation Task Example](https://github.com/huggingface/notebooks/blob/master/examples/translation.ipynb)
-# Training Dataset
-"""
-train_text = []
-train_label = []
-for i in range(len(data)):
-    train_text.append(data[i][0])
-    train_label.append(data[i][1])
-raw_datasets = [{'en': train_text[i], 'ro': train_label[i]}
-                for i in range(len(train_text))]
-
-raw_datasets_train = {}
-for i in range(len(raw_datasets)):
-    raw_datasets_train.setdefault('translation', []).append(
-        {'translation': raw_datasets[i]})
-
-df2 = pd.DataFrame.from_dict(raw_datasets_train['translation'])
-train_dataset = Dataset.from_pandas(df2)
-
-"""## Validation Dataset"""
-
+path1 = "sample_data/prim_fwd.train"
+train_dataset = create_dataset(path=path1, count=10000)
 path2 = "sample_data/prim_fwd.valid"
-data2 = read_data(path2, 9000)
-valid_text = []
-valid_label = []
-for i in range(len(data2)):
-    valid_text.append(data2[i][0])
-    valid_label.append(data2[i][1])
-raw_datasets1 = [{'en': valid_text[i], 'ro': valid_label[i]}
-                 for i in range(len(valid_text))]
-
-raw_datasets_vlaid = {}
-for i in range(len(raw_datasets1)):
-    raw_datasets_vlaid.setdefault('translation', []).append(
-        {'translation': raw_datasets1[i]})
-
-df_valid = pd.DataFrame.from_dict(raw_datasets_vlaid['translation'])
-valid_dataset = Dataset.from_pandas(df_valid)
+valid_dataset = create_dataset(path=path2, count=1000)
+path3 = "sample_data/prim_fwd.test"
+test_dataset = create_dataset(path=path3, count=500)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -184,7 +167,7 @@ else:
 """# Create the Final Data Set"""
 
 datasetM = {'train': train_dataset,
-            'validation': valid_dataset}
+            'validation': valid_dataset, 'test': test_dataset}
 max_input_length = 128
 max_target_length = 128
 source_lang = "en"
@@ -193,6 +176,8 @@ target_lang = "ro"
 tokenized_datasets_train = datasetM['train'].map(
     preprocess_function_new, batched=True)
 tokenized_datasets_valid = datasetM['validation'].map(
+    preprocess_function_new, batched=True)
+tokenized_datasets_test = datasetM['test'].map(
     preprocess_function_new, batched=True)
 
 """#  Fine-tuning the model"""
@@ -208,7 +193,7 @@ args = Seq2SeqTrainingArguments(
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=3,
-    num_train_epochs=25,
+    num_train_epochs=100,
     predict_with_generate=True,
     fp16=True,
 )
@@ -224,6 +209,6 @@ trainer = Seq2SeqTrainer(
     tokenizer=tokenizer,
     compute_metrics=compute_metrics
 )
- 
+
 trainer.train()
-torch.save(model, 'models/model3')
+torch.save(model, 'models/model_1000')

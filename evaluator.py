@@ -95,7 +95,54 @@ def convert_to_sympy(s):
     hyp = env.infix_to_sympy(hyp)
     return hyp
 
-# Set up and Loading the Data
+
+def create_dataset(path, count):
+    data = read_data(path, count)
+
+    train_text = []
+    train_label = []
+    for i in range(len(data)):
+        train_text.append(data[i][0])
+        train_label.append(data[i][1])
+    raw_datasets = [{'en': train_text[i], 'ro': train_label[i]}
+                    for i in range(len(train_text))]
+
+    raw_datasets = {}
+    for i in range(len(raw_datasets)):
+        raw_datasets.setdefault('translation', []).append(
+            {'translation': raw_datasets[i]})
+
+    df = pd.DataFrame.from_dict(raw_datasets['translation'])
+    train_dataset = Dataset.from_pandas(df)
+    return train_dataset
+
+
+def prediction(data, model, tokenizer, number_of_samples):
+    count_acc = 0
+    count = 0
+    for i in range(number_of_samples):
+        text = data['translation'][i]['en']
+        input_ids = tokenizer.encode(text, return_tensors="pt")
+        outputs = model.generate(input_ids.to(device='cuda'))
+        decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        actual = data['translation'][i]['ro']
+        try:
+            actual_s = convert_to_sympy(actual)
+            decoded_s = convert_to_sympy(decoded)
+            res = "OK" if simplify(decoded_s - actual_s,
+                                   seconds=1) == 0 else "NO"
+            if res == 'OK':
+                count_acc += 1
+        except:
+            with open('invalids.txt', 'a') as f:
+                f.write(actual)
+                f.write('\n')
+                f.write(decoded)
+                f.write('\n')
+            count += 1
+            continue
+    print("Train Accuracy:", count_acc/number_of_samples)
+    print(count)
 
 
 if torch.cuda.is_available():
@@ -125,68 +172,12 @@ params = params = AttrDict({
 })
 
 env = build_env(params)
-path = "sample_data/prim_fwd.train"
-data = read_data(path, 100000)
-
-"""# Pre-Processing the Data
-Here we pre-process our data, so that it matches the format in our reference code: [Hugging Face Translation Task Example](https://github.com/huggingface/notebooks/blob/master/examples/translation.ipynb)
-# Training Dataset
-"""
-train_text = []
-train_label = []
-for i in range(len(data)):
-    train_text.append(data[i][0])
-    train_label.append(data[i][1])
-raw_datasets = [{'en': train_text[i], 'ro': train_label[i]}
-                for i in range(len(train_text))]
-
-raw_datasets_train = {}
-for i in range(len(raw_datasets)):
-    raw_datasets_train.setdefault('translation', []).append(
-        {'translation': raw_datasets[i]})
-
-df2 = pd.DataFrame.from_dict(raw_datasets_train['translation'])
-train_dataset = Dataset.from_pandas(df2)
-
-"""## Validation Dataset"""
-
+path1 = "sample_data/prim_fwd.train"
+train_dataset = create_dataset(path=path1, count=10000)
 path2 = "sample_data/prim_fwd.valid"
-data2 = read_data(path2, 9000)
-valid_text = []
-valid_label = []
-for i in range(len(data2)):
-    valid_text.append(data2[i][0])
-    valid_label.append(data2[i][1])
-raw_datasets1 = [{'en': valid_text[i], 'ro': valid_label[i]}
-                 for i in range(len(valid_text))]
-
-raw_datasets_vlaid = {}
-for i in range(len(raw_datasets1)):
-    raw_datasets_vlaid.setdefault('translation', []).append(
-        {'translation': raw_datasets1[i]})
-
-df_valid = pd.DataFrame.from_dict(raw_datasets_vlaid['translation'])
-valid_dataset = Dataset.from_pandas(df_valid)
-
-"""## Test  Dataset"""
-
+valid_dataset = create_dataset(path=path2, count=1000)
 path3 = "sample_data/prim_fwd.test"
-data3 = read_data(path3, 500)
-test_text = []
-test_label = []
-for i in range(len(data3)):
-    test_text.append(data3[i][0])
-    test_label.append(data3[i][1])
-raw_datasets2 = [{'en': test_text[i], 'ro': test_label[i]}
-                 for i in range(len(test_text))]
-
-raw_datasets_test = {}
-for i in range(len(raw_datasets2)):
-    raw_datasets_test.setdefault('translation', []).append(
-        {'translation': raw_datasets2[i]})
-
-df_test = pd.DataFrame.from_dict(raw_datasets_test['translation'])
-test_dataset = Dataset.from_pandas(df_test)
+test_dataset = create_dataset(path=path3, count=500)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -219,107 +210,7 @@ tokenized_datasets_test = datasetM['test'].map(
 
 """#  Fine-tuning the model"""
 
-model = torch.load('models/model3')
+model = torch.load('models/model_1000')
 
-batch_size = 25
-args = Seq2SeqTrainingArguments(
-    "test-translation",
-    evaluation_strategy="epoch",
-    learning_rate=2e-5,
-    per_device_train_batch_size=batch_size,
-    per_device_eval_batch_size=batch_size,
-    weight_decay=0.01,
-    save_total_limit=3,
-    num_train_epochs=25,
-    predict_with_generate=True,
-    fp16=True,
-)
-
-data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
-
-trainer = Seq2SeqTrainer(
-    model,
-    args,
-    train_dataset=tokenized_datasets_train,
-    eval_dataset=tokenized_datasets_valid,
-    data_collator=data_collator,
-    tokenizer=tokenizer,
-    compute_metrics=compute_metrics
-)
- 
-#training evaluation
-count_train = 0
-count = 0
-for i in range(100000):
-    text = tokenized_datasets_train['translation'][i]['en']
-    input_ids = tokenizer.encode(text, return_tensors="pt")
-    outputs = model.generate(input_ids.to(device='cuda'))
-    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    actual = tokenized_datasets_train['translation'][i]['ro']
-    try:
-        actual_s = convert_to_sympy(actual)
-        decoded_s = convert_to_sympy(decoded)
-        res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
-        if res == 'OK':
-            count_train += 1
-    except:
-        with open('invalids.txt', 'a') as f:
-            f.write(actual)
-            f.write('\n')
-            f.write(decoded)
-            f.write('\n')
-        count += 1
-        continue
-print("Train Accuracy:", count_train/100000)
-print(count)
-# Validation Evaluation:
-count_valid = 0
-count = 0
-for i in range(9000):
-    text = tokenized_datasets_valid['translation'][i]['en']
-    input_ids = tokenizer.encode(text, return_tensors="pt")
-    outputs = model.generate(input_ids.to(device='cuda'))
-    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    actual = tokenized_datasets_valid['translation'][i]['ro']
-    try:
-        actual_s = convert_to_sympy(actual)
-        decoded_s = convert_to_sympy(decoded)
-        res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
-        if res == 'OK':
-            count_valid += 1
-    except:
-        with open('invalids.txt', 'a') as f:
-            f.write(actual)
-            f.write('\n')
-            f.write(decoded)
-            f.write('\n')
-
-        count += 1
-        continue
-print("Validation Accuracy:", count_valid/9000)
-print(count)
-# Test Evaluation:
-count_test = 0
-count = 0
-for i in range(500):
-    text = tokenized_datasets_test['translation'][i]['en']
-    input_ids = tokenizer.encode(text, return_tensors="pt")
-    outputs = model.generate(input_ids.to(device='cuda'))
-    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    actual = tokenized_datasets_test['translation'][i]['ro']
-    try:
-        actual_s = convert_to_sympy(actual)
-        decoded_s = convert_to_sympy(decoded)
-        res = "OK" if simplify(decoded_s - actual_s, seconds=1) == 0 else "NO"
-        if res == 'OK':
-            count_test += 1
-    except:
-        with open('invalids.txt', 'a') as f:
-            f.write(actual)
-            f.write('\n')
-            f.write(decoded)
-            f.write('\n')
-        count += 1
-        continue
-print("Test Accuracy:", count_test/500)
-print(count)
+prediction(data=tokenized_datasets_test, model=model,
+           tokenizer=tokenizer, number_of_samples=500)
