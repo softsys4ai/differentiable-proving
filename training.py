@@ -144,11 +144,11 @@ params = params = AttrDict({
 
 env = build_env(params)
 path1 = "sample_data/prim_fwd.train"
-train_dataset = create_dataset(path=path1, count=10000)
+train_dataset = create_dataset(path=path1, count=300000)
 path2 = "sample_data/prim_fwd.valid"
-valid_dataset = create_dataset(path=path2, count=1000)
+valid_dataset = create_dataset(path=path2, count=9500)
 path3 = "sample_data/prim_fwd.test"
-test_dataset = create_dataset(path=path3, count=500)
+test_dataset = create_dataset(path=path3, count=1000)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -210,4 +210,4 @@ trainer = Seq2SeqTrainer(
 )
 
 trainer.train()
-torch.save(model, 'models/model_1000')
+torch.save(model, 'models/model_300000')

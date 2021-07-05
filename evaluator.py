@@ -1,4 +1,5 @@
 from src.envs.sympy_utils import simplify
+from enum import Enum
 from transformers import AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer
 from transformers import AutoTokenizer
 from src.envs import build_env
@@ -116,32 +117,32 @@ def create_dataset(path, count):
     return dataset
 
 
-def prediction(data, model, tokenizer, number_of_samples):
-    count_acc = 0
-    count = 0
-    for i in range(number_of_samples):
-        text = data['translation'][i]['en']
-        input_ids = tokenizer.encode(text, return_tensors="pt")
-        outputs = model.generate(input_ids.to(device='cuda'))
-        decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        actual = data['translation'][i]['ro']
-        try:
-            actual_s = convert_to_sympy(actual)
-            decoded_s = convert_to_sympy(decoded)
-            res = "OK" if simplify(decoded_s - actual_s,
-                                   seconds=1) == 0 else "NO"
-            if res == 'OK':
-                count_acc += 1
-        except:
-            with open('invalids.txt', 'a') as f:
-                f.write(actual)
-                f.write('\n')
-                f.write(decoded)
-                f.write('\n')
-            count += 1
-            continue
-    print("Train Accuracy:", count_acc/number_of_samples)
-    print(count)
+evaluationType = Enum('evaluationType', 'Training Validation Test')
+def evaluationFunction(totalNumberOfEvaluation, tokenized_datasets, evalType):
+    batch_size = 25
+    count_trueEstimation = 0
+    count_nonMathExpressionEstimation = 0
+    numberOfBatches = int(totalNumberOfEvaluation / batch_size)
+    for j_batchIndex in range(numberOfBatches):
+        text = [tokenized_datasets['translation'][i]['en'] for i in range(j_batchIndex * batch_size, (j_batchIndex+1) * batch_size)]
+        input_batch = tokenizer(text, return_tensors="pt", padding=True)
+        outputs = model.generate(**input_batch.to(device = 'cuda'))
+        decoded_batch = [tokenizer.decode(t, skip_special_tokens=True) for t in outputs]
+        for k_indexInsideBatch in range(batch_size):
+            decoded = decoded_batch[k_indexInsideBatch]
+            ii_indexInWhole = j_batchIndex * batch_size + k_indexInsideBatch
+            actual = tokenized_datasets['translation'][ii_indexInWhole]['ro']
+            try:
+                actual_s = convert_to_sympy(actual)
+                decoded_s = convert_to_sympy(decoded)
+                res = True if simplify(decoded_s - actual_s, seconds=1) == 0 else False
+                if res == True:
+                    count_trueEstimation += 1
+            except:
+                count_nonMathExpressionEstimation += 1
+                continue
+    print(evalType.name, "Accuracy:", 100 * count_trueEstimation/totalNumberOfEvaluation)
+    print("NumberOfFalseEstimation", count_nonMathExpressionEstimation)
 
 
 if torch.cuda.is_available():
@@ -176,7 +177,7 @@ train_dataset = create_dataset(path=path1, count=10000)
 path2 = "sample_data/prim_fwd.valid"
 valid_dataset = create_dataset(path=path2, count=1000)
 path3 = "sample_data/prim_fwd.test"
-test_dataset = create_dataset(path=path3, count=500)
+test_dataset = create_dataset(path=path3, count=1000)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -209,7 +210,7 @@ tokenized_datasets_test = datasetM['test'].map(
 
 """#  Fine-tuning the model"""
 torch.cuda.empty_cache()
-model = torch.load('models/model_1000')
+model = torch.load('models/model3')
 
-prediction(data=tokenized_datasets_test, model=model,
-           tokenizer=tokenizer, number_of_samples=500)
+evaluationFunction(1000, tokenized_datasets_test, evaluationType.Test)
+
