@@ -2,33 +2,18 @@ from src.envs.sympy_utils import simplify
 from transformers import AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer
 from transformers import AutoTokenizer
 from src.envs import build_env
-from torch.utils.data import DataLoader
-from functools import partial
-from transformers.models.gpt2.modeling_gpt2 import GPT2Model
-import matplotlib.pyplot as plt
-import torch.nn as nn
 import torch.nn.functional as F
 import datasets
 import random
 import pandas as pd
-from IPython.display import display, HTML
 from datasets import Dataset
-import pandas as pd
-from logging import getLogger
 import torch
 import os
 from datasets import load_dataset, load_metric
-import csv
 import io
 import numpy as np
 import sympy as sp
-import torch
-import random
-import sys
 from src.utils import AttrDict
-from datasets import load_dataset, load_metric
-import sentencepiece
-from transformers.models.bert.modeling_bert import BertLayer
 
 # Required Functions
 
@@ -50,8 +35,8 @@ def preprocess_function_new(examples):
 
 def read_data(path, number_of_samples):
     with io.open(path, mode='r', encoding='utf-8') as f:
-        head = [next(f) for x in range(number_of_samples)]
-        lines = [line.rstrip().split('|') for line in head]
+        lines = [line.rstrip().split('|') for line in f]
+        lines = random.sample(lines, number_of_samples)
         data = [xy.split('\t') for _, xy in lines]
         data = [xy for xy in data if len(xy) == 2]
     return data
@@ -144,11 +129,9 @@ params = params = AttrDict({
 
 env = build_env(params)
 path1 = "sample_data/prim_fwd.train"
-train_dataset = create_dataset(path=path1, count=300000)
+train_dataset = create_dataset(path=path1, count=1000000)
 path2 = "sample_data/prim_fwd.valid"
 valid_dataset = create_dataset(path=path2, count=9500)
-path3 = "sample_data/prim_fwd.test"
-test_dataset = create_dataset(path=path3, count=1000)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -166,9 +149,9 @@ else:
 """# Create the Final Data Set"""
 
 datasetM = {'train': train_dataset,
-            'validation': valid_dataset, 'test': test_dataset}
-max_input_length = 128
-max_target_length = 128
+            'validation': valid_dataset}
+max_input_length = 512
+max_target_length = 512
 source_lang = "en"
 target_lang = "ro"
 
@@ -176,23 +159,21 @@ tokenized_datasets_train = datasetM['train'].map(
     preprocess_function_new, batched=True)
 tokenized_datasets_valid = datasetM['validation'].map(
     preprocess_function_new, batched=True)
-tokenized_datasets_test = datasetM['test'].map(
-    preprocess_function_new, batched=True)
 
 """#  Fine-tuning the model"""
 
 model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
-batch_size = 25
+batch_size = 32
 args = Seq2SeqTrainingArguments(
     "test-translation",
     evaluation_strategy="epoch",
-    learning_rate=2e-5,
+    learning_rate=1e-4,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=3,
-    num_train_epochs=100,
+    num_train_epochs=50,
     predict_with_generate=True,
     fp16=True,
 )
@@ -210,4 +191,4 @@ trainer = Seq2SeqTrainer(
 )
 
 trainer.train()
-torch.save(model, 'models/model_300000')
+torch.save(model, 'models/model_1Mfacebook')
