@@ -164,7 +164,7 @@ tokenized_datasets_valid = datasetM['validation'].map(
 
 model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
-batch_size = 32
+batch_size = 25
 args = Seq2SeqTrainingArguments(
     "test-translation",
     evaluation_strategy="epoch",
