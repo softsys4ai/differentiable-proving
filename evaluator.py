@@ -1,35 +1,19 @@
 from src.envs.sympy_utils import simplify
-from enum import Enum
 from transformers import AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer
 from transformers import AutoTokenizer
 from src.envs import build_env
-from torch.utils.data import DataLoader
-from functools import partial
-from transformers.models.gpt2.modeling_gpt2 import GPT2Model
-import matplotlib.pyplot as plt
-import torch.nn as nn
 import torch.nn.functional as F
 import datasets
 import random
 import pandas as pd
-from IPython.display import display, HTML
 from datasets import Dataset
-import pandas as pd
-from logging import getLogger
 import torch
 import os
 from datasets import load_dataset, load_metric
-import csv
 import io
 import numpy as np
 import sympy as sp
-import torch
-import random
-import sys
 from src.utils import AttrDict
-from datasets import load_dataset, load_metric
-import sentencepiece
-from transformers.models.bert.modeling_bert import BertLayer
 
 # Required Functions
 
@@ -172,10 +156,6 @@ params = params = AttrDict({
 })
 
 env = build_env(params)
-path1 = "sample_data/prim_fwd.train"
-train_dataset = create_dataset(path=path1, count=10000)
-path2 = "sample_data/prim_fwd.valid"
-valid_dataset = create_dataset(path=path2, count=1000)
 path3 = "sample_data/prim_fwd.test"
 test_dataset = create_dataset(path=path3, count=1000)
 
@@ -194,17 +174,12 @@ else:
 
 """# Create the Final Data Set"""
 
-datasetM = {'train': train_dataset,
-            'validation': valid_dataset, 'test': test_dataset}
+datasetM = {'test': test_dataset}
 max_input_length = 128
 max_target_length = 128
 source_lang = "en"
 target_lang = "ro"
 
-tokenized_datasets_train = datasetM['train'].map(
-    preprocess_function_new, batched=True)
-tokenized_datasets_valid = datasetM['validation'].map(
-    preprocess_function_new, batched=True)
 tokenized_datasets_test = datasetM['test'].map(
     preprocess_function_new, batched=True)
 
