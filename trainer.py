@@ -12,7 +12,8 @@ from datasets import load_dataset, load_metric
 import io
 import numpy as np
 import sympy as sp
-from src.utils import AttrDict, postprocess_text, create_dataset_train
+from src.utils import AttrDict 
+from src.hf_utils import postprocess_text, create_dataset_train
 
 
 def preprocess_function_new(examples):
@@ -83,9 +84,9 @@ params = params = AttrDict({
 
 env = build_env(params)
 path1 = "sample_data/prim_fwd.train"
-train_dataset = create_dataset_train(path=path1, count=1000000)
+train_dataset = create_dataset_train(path=path1, count=1000)
 path2 = "sample_data/prim_fwd.valid"
-valid_dataset = create_dataset_train(path=path2, count=9800)
+valid_dataset = create_dataset_train(path=path2, count=100)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -128,7 +129,7 @@ args = Seq2SeqTrainingArguments(
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=3,
-    num_train_epochs=25,
+    num_train_epochs=1,
     predict_with_generate=True,
     fp16=True,
 )
@@ -145,4 +146,5 @@ trainer = Seq2SeqTrainer(
 )
 
 trainer.train()
-torch.save(model, 'models/1Mlr2e5facebook')
+torch.save(model, 'models/modeltest')
+

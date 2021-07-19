@@ -12,7 +12,8 @@ from datasets import load_dataset, load_metric
 import io
 import numpy as np
 import sympy as sp
-from src.utils import AttrDict, evaluation_function, create_dataset_test, postprocess_text
+from src.utils import AttrDict 
+from src.hf_utils import evaluation_function, create_dataset_test, postprocess_text
 from enum import Enum
 # Required Functions
 
@@ -85,7 +86,7 @@ params = params = AttrDict({
 
 env = build_env(params)
 path3 = "sample_data/prim_fwd.test"
-test_dataset = create_dataset_test(path=path3, count=1000)
+test_dataset = create_dataset_test(path=path3, count=100)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -103,8 +104,8 @@ else:
 """# Create the Final Data Set"""
 
 datasetM = {'test': test_dataset}
-max_input_length = 512
-max_target_length = 512
+max_input_length = 128
+max_target_length = 128
 source_lang = "en"
 target_lang = "ro"
 
@@ -113,8 +114,9 @@ tokenized_datasets_test = datasetM['test'].map(
 
 """#  Fine-tuning the model"""
 torch.cuda.empty_cache()
-model = torch.load('models/100Kfacebook')
+model = torch.load('models/modeltest')
 evaluationType = Enum('evaluationType', 'Training Validation Test')
 batch_size = 25
-evaluation_function(1000, tokenized_datasets_test,
+evaluation_function(100, tokenized_datasets_test,
                     evaluationType.Test, tokenizer, model, batch_size, env)
+
