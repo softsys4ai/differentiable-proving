@@ -13,9 +13,7 @@ from datasets import load_dataset, load_metric
 import io
 import numpy as np
 import sympy as sp
-from src.utils import AttrDict
-
-# Required Functions
+from src.utils import AttrDict, postprocess_text, create_dataset_train
 
 
 def preprocess_function_new(examples):
@@ -31,22 +29,6 @@ def preprocess_function_new(examples):
 
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
-
-
-def read_data(path, number_of_samples):
-    with io.open(path, mode='r', encoding='utf-8') as f:
-        lines = [line.rstrip().split('|') for line in f]
-        lines = random.sample(lines, number_of_samples)
-        data = [xy.split('\t') for _, xy in lines]
-        data = [xy for xy in data if len(xy) == 2]
-    return data
-
-
-def postprocess_text(preds, labels):
-    preds = [pred.strip() for pred in preds]
-    labels = [[label.strip()] for label in labels]
-
-    return preds, labels
 
 
 def compute_metrics(eval_preds):
@@ -72,33 +54,6 @@ def compute_metrics(eval_preds):
     result["gen_len"] = np.mean(prediction_lens)
     result = {k: round(v, 4) for k, v in result.items()}
     return result
-
-
-def convert_to_sympy(s):
-    tok = s.split()
-    hyp = env.prefix_to_infix(tok)
-    hyp = env.infix_to_sympy(hyp)
-    return hyp
-
-
-def create_dataset(path, count):
-    data = read_data(path, count)
-    text = []
-    label = []
-    for i in range(len(data)):
-        text.append(data[i][0])
-        label.append(data[i][1])
-    raw_datasets = [{'en': text[i], 'ro': label[i]}
-                    for i in range(len(text))]
-
-    raw_datasets_t = {}
-    for i in range(len(raw_datasets)):
-        raw_datasets_t.setdefault('translation', []).append(
-            {'translation': raw_datasets[i]})
-
-    df = pd.DataFrame.from_dict(raw_datasets_t['translation'])
-    dataset = Dataset.from_pandas(df)
-    return dataset
 
 
 if torch.cuda.is_available():
@@ -129,9 +84,9 @@ params = params = AttrDict({
 
 env = build_env(params)
 path1 = "sample_data/prim_fwd.train"
-train_dataset = create_dataset(path=path1, count=1000000)
+train_dataset = create_dataset_train(path=path1, count=1000000)
 path2 = "sample_data/prim_fwd.valid"
-valid_dataset = create_dataset(path=path2, count=9500)
+valid_dataset = create_dataset_train(path=path2, count=9800)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -161,6 +116,7 @@ tokenized_datasets_valid = datasetM['validation'].map(
     preprocess_function_new, batched=True)
 
 """#  Fine-tuning the model"""
+torch.cuda.empty_cache()
 
 model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
@@ -168,18 +124,17 @@ batch_size = 25
 args = Seq2SeqTrainingArguments(
     "test-translation",
     evaluation_strategy="epoch",
-    learning_rate=1e-4,
+    learning_rate=2e-5,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=3,
-    num_train_epochs=50,
+    num_train_epochs=25,
     predict_with_generate=True,
     fp16=True,
 )
 
 data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
-
 trainer = Seq2SeqTrainer(
     model,
     args,
@@ -191,4 +146,4 @@ trainer = Seq2SeqTrainer(
 )
 
 trainer.train()
-torch.save(model, 'models/model_1Mfacebook')
+torch.save(model, 'models/1Mlr2e5facebook')
