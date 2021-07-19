@@ -1,4 +1,3 @@
-from src.envs.sympy_utils import simplify
 from transformers import AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer
 from transformers import AutoTokenizer
 from src.envs import build_env
@@ -13,8 +12,8 @@ from datasets import load_dataset, load_metric
 import io
 import numpy as np
 import sympy as sp
-from src.utils import AttrDict
-
+from src.utils import AttrDict, evaluation_function, create_dataset_test, postprocess_text
+from enum import Enum
 # Required Functions
 
 
@@ -31,22 +30,6 @@ def preprocess_function_new(examples):
 
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
-
-
-def read_data(path, number_of_samples):
-    with io.open(path, mode='r', encoding='utf-8') as f:
-        head = [next(f) for x in range(number_of_samples)]
-        lines = [line.rstrip().split('|') for line in head]
-        data = [xy.split('\t') for _, xy in lines]
-        data = [xy for xy in data if len(xy) == 2]
-    return data
-
-
-def postprocess_text(preds, labels):
-    preds = [pred.strip() for pred in preds]
-    labels = [[label.strip()] for label in labels]
-
-    return preds, labels
 
 
 def compute_metrics(eval_preds):
@@ -72,61 +55,6 @@ def compute_metrics(eval_preds):
     result["gen_len"] = np.mean(prediction_lens)
     result = {k: round(v, 4) for k, v in result.items()}
     return result
-
-
-def convert_to_sympy(s):
-    tok = s.split()
-    hyp = env.prefix_to_infix(tok)
-    hyp = env.infix_to_sympy(hyp)
-    return hyp
-
-
-def create_dataset(path, count):
-    data = read_data(path, count)
-    text = []
-    label = []
-    for i in range(len(data)):
-        text.append(data[i][0])
-        label.append(data[i][1])
-    raw_datasets = [{'en': text[i], 'ro': label[i]}
-                    for i in range(len(text))]
-
-    raw_datasets_t = {}
-    for i in range(len(raw_datasets)):
-        raw_datasets_t.setdefault('translation', []).append(
-            {'translation': raw_datasets[i]})
-
-    df = pd.DataFrame.from_dict(raw_datasets_t['translation'])
-    dataset = Dataset.from_pandas(df)
-    return dataset
-
-
-evaluationType = Enum('evaluationType', 'Training Validation Test')
-def evaluationFunction(totalNumberOfEvaluation, tokenized_datasets, evalType):
-    batch_size = 25
-    count_trueEstimation = 0
-    count_nonMathExpressionEstimation = 0
-    numberOfBatches = int(totalNumberOfEvaluation / batch_size)
-    for j_batchIndex in range(numberOfBatches):
-        text = [tokenized_datasets['translation'][i]['en'] for i in range(j_batchIndex * batch_size, (j_batchIndex+1) * batch_size)]
-        input_batch = tokenizer(text, return_tensors="pt", padding=True)
-        outputs = model.generate(**input_batch.to(device = 'cuda'))
-        decoded_batch = [tokenizer.decode(t, skip_special_tokens=True) for t in outputs]
-        for k_indexInsideBatch in range(batch_size):
-            decoded = decoded_batch[k_indexInsideBatch]
-            ii_indexInWhole = j_batchIndex * batch_size + k_indexInsideBatch
-            actual = tokenized_datasets['translation'][ii_indexInWhole]['ro']
-            try:
-                actual_s = convert_to_sympy(actual)
-                decoded_s = convert_to_sympy(decoded)
-                res = True if simplify(decoded_s - actual_s, seconds=1) == 0 else False
-                if res == True:
-                    count_trueEstimation += 1
-            except:
-                count_nonMathExpressionEstimation += 1
-                continue
-    print(evalType.name, "Accuracy:", 100 * count_trueEstimation/totalNumberOfEvaluation)
-    print("NumberOfFalseEstimation", count_nonMathExpressionEstimation)
 
 
 if torch.cuda.is_available():
@@ -157,7 +85,7 @@ params = params = AttrDict({
 
 env = build_env(params)
 path3 = "sample_data/prim_fwd.test"
-test_dataset = create_dataset(path=path3, count=1000)
+test_dataset = create_dataset_test(path=path3, count=1000)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -175,8 +103,8 @@ else:
 """# Create the Final Data Set"""
 
 datasetM = {'test': test_dataset}
-max_input_length = 128
-max_target_length = 128
+max_input_length = 512
+max_target_length = 512
 source_lang = "en"
 target_lang = "ro"
 
@@ -185,7 +113,8 @@ tokenized_datasets_test = datasetM['test'].map(
 
 """#  Fine-tuning the model"""
 torch.cuda.empty_cache()
-model = torch.load('models/model3')
-
-evaluationFunction(1000, tokenized_datasets_test, evaluationType.Test)
-
+model = torch.load('models/100Kfacebook')
+evaluationType = Enum('evaluationType', 'Training Validation Test')
+batch_size = 25
+evaluation_function(1000, tokenized_datasets_test,
+                    evaluationType.Test, tokenizer, model, batch_size, env)
