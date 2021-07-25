@@ -81,7 +81,7 @@ def create_dataset_test(path, count):
 evaluationType = Enum('evaluationType', 'Training Validation Test')
 
 
-def evaluation_function(totalNumberOfEvaluation, tokenized_datasets, evalType, tokenizer, model, batch_size, env):
+def evaluation_function(totalNumberOfEvaluation, tokenized_datasets, evalType, tokenizer, model, batch_size, env, num_beams):
     count_trueEstimation = 0
     count_nonMathExpressionEstimation = 0
     numberOfBatches = int(totalNumberOfEvaluation / batch_size)
@@ -89,7 +89,7 @@ def evaluation_function(totalNumberOfEvaluation, tokenized_datasets, evalType, t
         text = [tokenized_datasets['translation'][i]['en'] for i in range(
             j_batchIndex * batch_size, (j_batchIndex+1) * batch_size)]
         input_batch = tokenizer(text, return_tensors="pt", padding=True)
-        outputs = model.generate(**input_batch.to(device='cuda'))
+        outputs = model.generate(**input_batch.to(device='cuda'), num_beams = num_beams)
         decoded_batch = [tokenizer.decode(
             t, skip_special_tokens=True) for t in outputs]
         for k_indexInsideBatch in range(batch_size):

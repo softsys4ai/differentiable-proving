@@ -85,8 +85,8 @@ params = params = AttrDict({
 })
 
 env = build_env(params)
-path3 = "sample_data/prim_fwd.test"
-test_dataset = create_dataset_test(path=path3, count=100)
+path3 = "sample_data/prim_fwd_10k.test"
+test_dataset = create_dataset_test(path=path3, count=500)
 
 """# Tokenizing the Data"""
 model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
@@ -104,8 +104,8 @@ else:
 """# Create the Final Data Set"""
 
 datasetM = {'test': test_dataset}
-max_input_length = 128
-max_target_length = 128
+max_input_length = 512
+max_target_length = 512
 source_lang = "en"
 target_lang = "ro"
 
@@ -114,9 +114,9 @@ tokenized_datasets_test = datasetM['test'].map(
 
 """#  Fine-tuning the model"""
 torch.cuda.empty_cache()
-model = torch.load('models/modeltest')
+model = torch.load('models/model_10k_1')
 evaluationType = Enum('evaluationType', 'Training Validation Test')
-batch_size = 25
-evaluation_function(100, tokenized_datasets_test,
-                    evaluationType.Test, tokenizer, model, batch_size, env)
+batch_size = 32
+evaluation_function(500, tokenized_datasets_test,
+                    evaluationType.Test, tokenizer, model, batch_size, env, 10)
 
