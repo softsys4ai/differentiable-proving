@@ -15,10 +15,9 @@ def read_data_train(path, number_of_samples):
     return data
 
 
-def read_data_test(path, number_of_samples):
+def read_data_test(path):
     with io.open(path, mode='r', encoding='utf-8') as f:
         lines = [line.rstrip().split('|') for line in f]
-        lines = random.sample(lines, number_of_samples)
         data = [xy.split('\t') for _, xy in lines]
         data = [xy for xy in data if len(xy) == 2]
     return data
@@ -38,40 +37,38 @@ def convert_to_sympy(s, env):
     return hyp
 
 
-def create_dataset_train(path, count):
+def create_dataset_train(path, count, language):
     data = read_data_train(path, count)
     text = []
     label = []
     for i in range(len(data)):
         text.append(data[i][0])
         label.append(data[i][1])
-    raw_datasets = [{'en': text[i], 'ro': label[i]}
+    raw_datasets = [{'en': text[i], language: label[i]}
                     for i in range(len(text))]
 
     raw_datasets_t = {}
     for i in range(len(raw_datasets)):
-        raw_datasets_t.setdefault('translation', []).append(
-            {'translation': raw_datasets[i]})
+        raw_datasets_t.setdefault('translation', []).append({'translation': raw_datasets[i]})
 
     df = pd.DataFrame.from_dict(raw_datasets_t['translation'])
     dataset = Dataset.from_pandas(df)
     return dataset
 
 
-def create_dataset_test(path, count):
-    data = read_data_test(path, count)
+def create_dataset_test(path, language):
+    data = read_data_test(path)
     text = []
     label = []
     for i in range(len(data)):
         text.append(data[i][0])
         label.append(data[i][1])
-    raw_datasets = [{'en': text[i], 'ro': label[i]}
+    raw_datasets = [{'en': text[i], language: label[i]}
                     for i in range(len(text))]
 
     raw_datasets_t = {}
     for i in range(len(raw_datasets)):
-        raw_datasets_t.setdefault('translation', []).append(
-            {'translation': raw_datasets[i]})
+        raw_datasets_t.setdefault('translation', []).append({'translation': raw_datasets[i]})
 
     df = pd.DataFrame.from_dict(raw_datasets_t['translation'])
     dataset = Dataset.from_pandas(df)
@@ -81,7 +78,7 @@ def create_dataset_test(path, count):
 evaluationType = Enum('evaluationType', 'Training Validation Test')
 
 
-def evaluation_function(totalNumberOfEvaluation, tokenized_datasets, evalType, tokenizer, model, batch_size, env, num_beams):
+def evaluation_function(totalNumberOfEvaluation, tokenized_datasets, evalType, tokenizer, model, batch_size, env, num_beams, language):
     count_trueEstimation = 0
     count_nonMathExpressionEstimation = 0
     numberOfBatches = int(totalNumberOfEvaluation / batch_size)
@@ -95,7 +92,7 @@ def evaluation_function(totalNumberOfEvaluation, tokenized_datasets, evalType, t
         for k_indexInsideBatch in range(batch_size):
             decoded = decoded_batch[k_indexInsideBatch]
             ii_indexInWhole = j_batchIndex * batch_size + k_indexInsideBatch
-            actual = tokenized_datasets['translation'][ii_indexInWhole]['ro']
+            actual = tokenized_datasets['translation'][ii_indexInWhole][language]
             try:
                 actual_s = convert_to_sympy(actual, env)
                 decoded_s = convert_to_sympy(decoded, env)
@@ -106,7 +103,6 @@ def evaluation_function(totalNumberOfEvaluation, tokenized_datasets, evalType, t
             except:
                 count_nonMathExpressionEstimation += 1
                 continue
-    print(evalType.name, "Accuracy:", 100 *
-          count_trueEstimation/totalNumberOfEvaluation)
+    print(evalType.name, "Accuracy:", 100 * count_trueEstimation/totalNumberOfEvaluation)
     print("NumberOfFalseEstimation", count_nonMathExpressionEstimation)
 

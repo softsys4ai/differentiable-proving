@@ -84,20 +84,21 @@ params = params = AttrDict({
     'operators': 'add:10,sub:3,mul:10,div:5,sqrt:4,pow2:4,pow3:2,pow4:1,pow5:1,ln:4,exp:4,sin:4,cos:4,tan:4,asin:1,acos:1,atan:1,sinh:1,cosh:1,tanh:1,asinh:1,acosh:1,atanh:1',
 })
 
+language = 'ro' # SPECIFY LANGUAGE HERE.
 env = build_env(params)
-path3 = "sample_data/prim_fwd_10k.test"
-test_dataset = create_dataset_test(path=path3, count=500)
+path3 = "sample_data/prim_fwd.test" # SPECIFY PATH OF TEST DATA HERE.
+test_dataset = create_dataset_test(path=path3, language= language)
 
 """# Tokenizing the Data"""
-model_checkpoint = "Helsinki-NLP/opus-mt-en-ro"
+model_checkpoint = "Helsinki-NLP/opus-mt-en-{}".format(language)  # SPECIFY PRE-TRAINED MODEL HERE. 
 metric = load_metric("sacrebleu")
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=False)
 
 if "mbart" in model_checkpoint:
     tokenizer.src_lang = "en-XX"
-    tokenizer.tgt_lang = "ro-RO"
+    tokenizer.tgt_lang = "{}-{}".format(language, language.upper())
 if model_checkpoint in ["t5-small", "t5-base", "t5-larg", "t5-3b", "t5-11b"]:
-    prefix = "translate English to Romanian: "
+    prefix = "not important."
 else:
     prefix = ""
 
@@ -107,16 +108,15 @@ datasetM = {'test': test_dataset}
 max_input_length = 512
 max_target_length = 512
 source_lang = "en"
-target_lang = "ro"
+target_lang = language
 
-tokenized_datasets_test = datasetM['test'].map(
-    preprocess_function_new, batched=True)
+tokenized_datasets_test = datasetM['test'].map(preprocess_function_new, batched=True)
 
-"""#  Fine-tuning the model"""
+           
 torch.cuda.empty_cache()
-model = torch.load('models/model_10k_1')
+model = torch.load('models/pytorch_model.bin')  # SPECIFY LOADING PATH HERE.
 evaluationType = Enum('evaluationType', 'Training Validation Test')
 batch_size = 32
-evaluation_function(500, tokenized_datasets_test,
-                    evaluationType.Test, tokenizer, model, batch_size, env, 10)
+evaluation_function(1000, tokenized_datasets_test, evaluationType.Test, tokenizer, model, batch_size, env, num_beams= 1, language= language)
+      
 
