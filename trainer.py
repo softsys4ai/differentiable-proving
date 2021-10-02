@@ -1,5 +1,5 @@
 from transformers import AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, MBartTokenizer
 from src.envs import build_env
 import torch.nn.functional as F
 import datasets
@@ -58,6 +58,7 @@ if torch.cuda.is_available():
 else:
     device = 'cpu'
 
+print(device)
 params = params = AttrDict({
 
     # environment parameters
@@ -81,19 +82,16 @@ params = params = AttrDict({
 
 language = 'ro' # SPECIFY LANGUAGE HERE.
 env = build_env(params)
-path1 = "sample_data/prim_fwd_10M.train"    # SPECIFY PATH OF TRAINING DATA HERE.
-train_dataset = create_dataset_train(path=path1, count=10000000, language = language)
-path2 = "sample_data/prim_fwd.valid"    # SPECIFY PATH OF VALIDATION DATA HERE. WE WILL USE ALL OF VALIDATION DATA, NO NEED TO SPECIFY COUNT.
+path1 = "data/train/ode2_10k.train"    # SPECIFY PATH OF TRAINING DATA HERE.
+train_dataset = create_dataset_train(path=path1, count=10000, language = language)
+path2 = "data/valid/ode2.valid"    # SPECIFY PATH OF VALIDATION DATA HERE. WE WILL USE ALL OF VALIDATION DATA, NO NEED TO SPECIFY COUNT.
 valid_dataset = create_dataset_test(path=path2, language= language)
 
 """# Tokenizing the Data"""
-model_checkpoint = "Helsinki-NLP/opus-mt-en-{}".format(language) # SPECIFY PRE-TRAINED MODEL HERE. 
+model_checkpoint = "facebook/mbart-large-en-{}".format(language) # SPECIFY PRE-TRAINED MODEL HERE. 
 metric = load_metric("sacrebleu")
-tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=False)
+tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-en-ro", src_lang="en_XX", tgt_lang="ro_RO")
 
-if "mbart" in model_checkpoint:
-    tokenizer.src_lang = "en-XX"
-    tokenizer.tgt_lang = "{}-{}".format(language, language.upper())
 if model_checkpoint in ["t5-small", "t5-base", "t5-larg", "t5-3b", "t5-11b"]:
     prefix = "not important."
 else:
@@ -103,29 +101,29 @@ else:
 
 datasetM = {'train': train_dataset,
             'validation': valid_dataset}
-max_input_length = 512
-max_target_length = 512
+max_input_length = 1024
+max_target_length = 1024
 source_lang = "en"
 target_lang = language
 
-tokenized_datasets_train = datasetM['train'].map(preprocess_function_new, batched=True)
+tokenized_datasets_train = datasetM['train'].map(preprocess_function_new, batched=True, num_proc = 48)
 tokenized_datasets_valid = datasetM['validation'].map(preprocess_function_new, batched=True)
 
 """#  Fine-tuning the model"""
 
 model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
-
-batch_size = 32
+d = 'prim_ode2_10k' # Saving Folder Name
+batch_size = 8
 args = Seq2SeqTrainingArguments(
-    "test-translation",
+    "test-translation_{}".format(d),
     evaluation_strategy="epoch",
     learning_rate=1e-4,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=3,
-    num_train_epochs=25,
-    predict_with_generate=True,
+    num_train_epochs=15,
+    predict_with_generate=False,
     fp16=True,
 )
 
@@ -141,5 +139,5 @@ trainer = Seq2SeqTrainer(
 
 
 trainer.train()
-model_name = 'prim_fwd_10M' # SPECIFY MODEL SAVING NAME HERE.
+model_name = 'mbart_prim_ode2_10k_en_ro' # SPECIFY MODEL SAVING NAME HERE.
 torch.save(model, 'models/{}'.format(model_name))
