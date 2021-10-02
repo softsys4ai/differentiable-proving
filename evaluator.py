@@ -1,5 +1,5 @@
 from transformers import AutoModelForSeq2SeqLM, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments, Seq2SeqTrainer
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, MBartTokenizer
 from src.envs import build_env
 import torch.nn.functional as F
 import datasets
@@ -86,17 +86,13 @@ params = params = AttrDict({
 
 language = 'ro' # SPECIFY LANGUAGE HERE.
 env = build_env(params)
-path3 = "sample_data/prim_fwd.test" # SPECIFY PATH OF TEST DATA HERE.
-test_dataset = create_dataset_test(path=path3, language= language)
 
 """# Tokenizing the Data"""
-model_checkpoint = "Helsinki-NLP/opus-mt-en-{}".format(language)  # SPECIFY PRE-TRAINED MODEL HERE. 
+model_checkpoint = "facebook/mbart-large-en-{}".format(language) # SPECIFY PRE-TRAINED MODEL HERE. 
 metric = load_metric("sacrebleu")
-tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=False)
+tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-en-ro", src_lang="en_XX", tgt_lang="ro_RO")
 
-if "mbart" in model_checkpoint:
-    tokenizer.src_lang = "en-XX"
-    tokenizer.tgt_lang = "{}-{}".format(language, language.upper())
+
 if model_checkpoint in ["t5-small", "t5-base", "t5-larg", "t5-3b", "t5-11b"]:
     prefix = "not important."
 else:
@@ -104,19 +100,20 @@ else:
 
 """# Create the Final Data Set"""
 
-datasetM = {'test': test_dataset}
-max_input_length = 512
-max_target_length = 512
+
+max_input_length = 1024 # Set to 512 if it is Marian-MT
+max_target_length = 1024 # Set to 512 if it is Marian-MT
 source_lang = "en"
 target_lang = language
 
-tokenized_datasets_test = datasetM['test'].map(preprocess_function_new, batched=True)
 
-           
-torch.cuda.empty_cache()
-model = torch.load('models/pytorch_model.bin')  # SPECIFY LOADING PATH HERE.
-evaluationType = Enum('evaluationType', 'Training Validation Test')
-batch_size = 32
-evaluation_function(1000, tokenized_datasets_test, evaluationType.Test, tokenizer, model, batch_size, env, num_beams= 1, language= language)
       
-
+torch.cuda.empty_cache()
+path = "data/test/prim_fwd_1k.test" # SPECIFY PATH OF TEST DATA HERE.
+test_dataset = create_dataset_test(path=path, language= language)  
+datasetM = {'test': test_dataset}
+tokenized_datasets_test = datasetM['test'].map(preprocess_function_new, batched=True)
+model = torch.load('models/mbart_prim_fwd_10k_en_ro')  # SPECIFY LOADING PATH HERE.
+evaluationType = Enum('evaluationType', 'Training Validation Test')
+batch_size = 8
+evaluation_function(1000, tokenized_datasets_test, evaluationType.Test, tokenizer, model, batch_size, env, num_beams= 1, language= language)

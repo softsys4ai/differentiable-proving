@@ -101,8 +101,8 @@ else:
 
 datasetM = {'train': train_dataset,
             'validation': valid_dataset}
-max_input_length = 1024 # Set 512 if it is Marian-MT
-max_target_length = 1024 # Set 512 if it is Marian-MT
+max_input_length = 1024 # Set to 512 if it is Marian-MT
+max_target_length = 1024 # Set to 512 if it is Marian-MT
 source_lang = "en"
 target_lang = language
 
