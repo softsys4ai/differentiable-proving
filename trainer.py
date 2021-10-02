@@ -88,9 +88,20 @@ path2 = "data/valid/ode2.valid"    # SPECIFY PATH OF VALIDATION DATA HERE. WE WI
 valid_dataset = create_dataset_test(path=path2, language= language)
 
 """# Tokenizing the Data"""
-model_checkpoint = "facebook/mbart-large-en-{}".format(language) # SPECIFY PRE-TRAINED MODEL HERE. 
-metric = load_metric("sacrebleu")
-tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-en-ro", src_lang="en_XX", tgt_lang="ro_RO")
+Model_Type = 'mbart'
+is_source_en = True
+
+if Model_Type == 'mbart':
+    model_checkpoint = "facebook/mbart-large-en-{}".format(language) # SPECIFY PRE-TRAINED MODEL HERE. 
+    metric = load_metric("sacrebleu")
+    tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-en-ro", src_lang="en_XX", tgt_lang="ro_RO")
+elif Model_Type == 'Marian':
+    if is_source_en:
+        model_checkpoint = "Helsinki-NLP/opus-mt-en-{}".format(language)
+    else:
+        model_checkpoint = "Helsinki-NLP/opus-mt-{}-en".format(language)
+    metric = load_metric("sacrebleu")
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=False)
 
 if model_checkpoint in ["t5-small", "t5-base", "t5-larg", "t5-3b", "t5-11b"]:
     prefix = "not important."
