@@ -125,7 +125,8 @@ path = "data/test/prim_fwd_1k.test" # SPECIFY PATH OF TEST DATA HERE.
 test_dataset = create_dataset_test(path=path, language= language)  
 datasetM = {'test': test_dataset}
 tokenized_datasets_test = datasetM['test'].map(preprocess_function_new, batched=True)
-model = torch.load('models/mbart_prim_fwd_10k_en_ro')  # SPECIFY LOADING PATH HERE.
+saved_path = 'models/mbart_prim_fwd_10k_en_ro'
+model = torch.load(saved_path)  # SPECIFY LOADING PATH HERE.
 evaluationType = Enum('evaluationType', 'Training Validation Test')
 batch_size = 8
 evaluation_function(1000, tokenized_datasets_test, evaluationType.Test, tokenizer, model, batch_size, env, num_beams= 1, language= language)
