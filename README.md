@@ -1,29 +1,44 @@
 # differentiable-proving
 
-Codes for the Symbolic Math project.
+This is a repository containing code and data for the paper: 
 
-### Encoder-Decoder Transformer
+> K. Noorbakhsh, M. Sulaiman, M. Sharifi, K. Roy and P. Jamshidi. _Pretrained Language Models are Symbolic Mathematics Solvers too!_
+## Pre-requisites
 
-Reference:
+This code depends on the following packages:
 
-- [Fine-tuning a model on a translation task (Hugging Face)](https://github.com/huggingface/notebooks/blob/master/examples/translation.ipynb)
+ 1. `Torch`
+ 2. `NumPy`
+ 3. `SymPy`
+ 4. `Transformers`
+ 5. `Apex`
 
-Run `training.py` and `evaluator.py` (Python code)
+## Structure
 
-## Dependencies
+`trainer.py` contains code for fine-tuning the pre-trained language models. Please modify the following parameters for running:
 
-- Python 3
-- [NumPy](http://www.numpy.org/)
-- [SymPy](https://www.sympy.org/)
-- [PyTorch](http://pytorch.org/)
-- [Transformers](https://github.com/huggingface/transformers)
+1. `language`: the pre-trained language.
+2. `Model_Type`: mbart or Marian.
+3. `path1` and `path2`: the path of the training and the validation data.
+4. `max_input_length` and `max_output_length`: 1024 for the mBART model and 512 for the Marian-MT model.
+5. `model_name`: name of the model you wish to save. 
 
+`evaluator.py` contains code for evaluting the fine-tuned language model on the symbolic math data. Please modify the parameter 1-4 same as the `trainer` section and also modify the following parameter:
+
+1. `path`: the path of the test dataset.
+2. `saved_model`: the path of the saved fine-tuned model.
+
+`src/hf_utils.py` contains code for reading the datasets and some utilities for evaluation. 
+
+The rest of the code is adopted from [Deep learning for symbolic mathematics (Lample et al.)](https://github.com/facebookresearch/SymbolicMathematics).
 ## Datasets
 
-| Dataset                       | #train |                                      Link                                       |
-| ----------------------------- | :----: | :-----------------------------------------------------------------------------: |
-| Integration (FWD)             |  45M   | [Link](https://dl.fbaipublicfiles.com/SymbolicMathematics/data/prim_fwd.tar.gz) |
-| Integration (BWD)             |  88M   | [Link](https://dl.fbaipublicfiles.com/SymbolicMathematics/data/prim_bwd.tar.gz) |
-| Integration (IBP)             |  23M   | [Link](https://dl.fbaipublicfiles.com/SymbolicMathematics/data/prim_ibp.tar.gz) |
-| Differential equations (ODE1) |  65M   |   [Link](https://dl.fbaipublicfiles.com/SymbolicMathematics/data/ode1.tar.gz)   |
-| Differential equations (ODE2) |  32M   |   [Link](https://dl.fbaipublicfiles.com/SymbolicMathematics/data/ode2.tar.gz)   |
+The datasets are available [here](https://zenodo.org/record/5546440). 
+
+1. `train`, `valid`, and `test` files contain the training, validation and test datasets for the mBART model.
+2. `language_data` contains data for the training, validation and test datasets of the Marian-MT model.
+3. `distribution_test` contains the test files for the distribution shift section (polynomial, trgonometric and logarithmic).
+
+## Citation
+Please cite us if you use our work in your research (bibtex will be available soon.).
+
