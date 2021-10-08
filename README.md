@@ -40,5 +40,13 @@ The datasets are available [here](https://zenodo.org/record/5546440).
 3. `distribution_test` contains the test files for the distribution shift section (polynomial, trgonometric and logarithmic).
 
 ## Citation
-Please cite us if you use our work in your research (bibtex will be available soon.).
+Please cite us if you use our work in your research.
 
+    @misc{noorbakhsh2021pretrained,
+        title={Pretrained Language Models are Symbolic Mathematics Solvers too!}, 
+        author={Kimia Noorbakhsh and Modar Sulaiman and Mahdi Sharifi and Kallol Roy and Pooyan Jamshidi},
+        year={2021},
+        eprint={2110.03501},
+        archivePrefix={arXiv},
+        primaryClass={stat.ML}
+    }
