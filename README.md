@@ -42,11 +42,9 @@ The datasets are available [here](https://zenodo.org/record/5546440).
 ## Citation
 Please cite us if you use our work in your research.
 
-    @misc{noorbakhsh2021pretrained,
+    @article{noorbakhsh2021pretrained,
         title={Pretrained Language Models are Symbolic Mathematics Solvers too!}, 
         author={Kimia Noorbakhsh and Modar Sulaiman and Mahdi Sharifi and Kallol Roy and Pooyan Jamshidi},
-        year={2021},
-        eprint={2110.03501},
-        archivePrefix={arXiv},
-        primaryClass={stat.ML}
-    }
+        journal={arXiv preprint arXiv:2110.03501},
+        year={2021}
+     }
