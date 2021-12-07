@@ -1,7 +1,7 @@
 ---
 layout: default
 ---
-# Abstract
+
 Solving symbolic mathematics has always been of in the arena of human
 ingenuity that needs compositional reasoning and recurrence. However, re-
 cent studies have shown that large-scale language models such as transform-
