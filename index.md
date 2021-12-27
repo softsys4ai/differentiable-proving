@@ -2,7 +2,7 @@
 layout: default
 ---
 
-Solving symbolic mathematics has always been of in the arena of human
+Solving **symbolic mathematics** has always been of in the arena of human
 ingenuity that needs compositional reasoning and recurrence. However, recent studies have shown that large-scale language models such as **transformers are universal** and surprisingly can be trained as a sequence-to-sequence
 task to solve complex mathematical equations. These large transformer
 models need **humongous amounts of training data** to generalize to unseen
@@ -21,3 +21,4 @@ in solving symbolic mathematics tasks. Finally, we study the robustness
 of the fine-tuned model on symbolic math tasks against distribution shift,
 and our approach generalizes better in distribution shift scenarios for the
 function integration.
+![Branching](assets/SymMath.png)
