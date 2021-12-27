@@ -21,4 +21,4 @@ in solving symbolic mathematics tasks. Finally, we study the robustness
 of the fine-tuned model on symbolic math tasks against distribution shift,
 and our approach generalizes better in distribution shift scenarios for the
 function integration.
-![Branching](assets/SymMath.png)
+![Octocat](assets/SymMath.png)
