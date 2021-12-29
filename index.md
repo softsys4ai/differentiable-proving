@@ -71,5 +71,6 @@ this concept, we define two different kinds of distribution shift as follows:
 in Lample & Charton (2019). Meaning that we will investigate how robust our
 models trained in 5.1 are when we change their testing distribution. We report the
 evaluation metrics trained and tested on a different combination of training datasets
-in the following.
+in the following table:
+
 
