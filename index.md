@@ -54,6 +54,7 @@ We investigate whether different languages used to train our pretrained models i
 results of this transfer learning. The following table shows the evaluation of accuracy of our Marian-MT model (in percentage (%)) on the integration and differential equation solving for different pretrained languages. The highest
 accuracy is indicated by bold case in each column (task). We see that the language **has no
 major impact** on the results of this fine-tuning.
+
 | Language          | English - Romanian | English - Greek | English - Arabic | English - French | English - Spanish | Greek - English | Arabic - English | French - English | Spanish - English |
 |:-----------------:|:------------------:|:---------------:|:----------------:|:----------------:|:-----------------:|:---------------:|:----------------:|:----------------:|:-----------------:|
 | Integration (FWD) | 38.8             | 39.3          | 43.9           | 47.7           | 43.5            | 39.1          | 43.3           | **50.5**      | 40.4            |
