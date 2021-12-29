@@ -22,3 +22,7 @@ of the fine-tuned model on symbolic math tasks against distribution shift,
 and our approach generalizes better in distribution shift scenarios for the
 function integration.
 ![Octocat](assets/SymMath.png)
+
+# Empirical Evaluation
+In orther to examine the transfer from language translation to solving
+symbolic math equations and attempt to understand better why this happens and which factors enable this transfer, we desighn the following research questions. we refer to [Lample & Charton (2019)](https://arxiv.org/abs/1912.01412)’s model results with the keyword LC in our tables and visualizations
