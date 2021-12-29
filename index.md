@@ -35,11 +35,11 @@ perform on the differential equation task, especially the second-order different
 
 |                   | Our Model | LC's Model |
 |:-----------------:|:---------:|:----------:|
-| Integration (FWD) | $87.4$    | $79.4$     |
-| Integration (BWD) | $92.2$    | $83.4$     |
-| Integration (IBP) | $86.2$    | $87.4$     |
-| ODE $1$           | $62.2$    | $71.8$     |
-| ODE $2$           | $17.9$    | $39.9$     |
+| Integration (FWD) | 87.4    | 79.4     |
+| Integration (BWD) | 92.2    | 83.4    |
+| Integration (IBP) | 86.2    | 87.4     |
+| ODE 1           | 62.2    | 71.8     |
+| ODE 2           | 17.9    | 39.9     |
 
 The following figure extends this exploration by running the same experiment for different orders of magnitude
 of training data (i.e., 10K, 100K, and 1M).  Our fine-tuned model has higher
