@@ -26,13 +26,12 @@ function integration.
 # Empirical Evaluation
 In orther to examine the transfer from language translation to solving
 symbolic math equations and attempt to understand better why this happens and which factors enable this transfer, we desighn the following research questions. we refer to [Lample & Charton (2019)](https://arxiv.org/abs/1912.01412)’s model results with the keyword LC in our tables and visualizations.
-## i. Does this pretrained model help us to use less data for training?
+## i. **Does this pretrained model help us to use less data for training?**
 As studied in Lample & Charton (2019), to train transformer architecture on the symbolic
 math data, we need a vast amount of training data for each task to achieve the highest
 accuracies (in the order of 40 million to 80 million training samples for each task.).  We can see in the following table that our model outperformed
 in the integration task, with a considerable gap from the LC model. But it cannot properly
 perform on the differential equation task, especially the second-order differential equations. 
-<div align="center">
 
 |                   | Our Model | LC's Model |
 |:-----------------:|:---------:|:----------:|
@@ -41,7 +40,7 @@ perform on the differential equation task, especially the second-order different
 | Integration (IBP) | $86.2$    | $87.4$     |
 | ODE $1$           | $62.2$    | $71.8$     |
 | ODE $2$           | $17.9$    | $39.9$     |
-</div>
+
 The following figure extends this exploration by running the same experiment for different orders of magnitude
 of training data (i.e., 10K, 100K, and 1M).  Our fine-tuned model has higher
 accuracy in comparison to LC in all tasks and with different training sample sizes, except
