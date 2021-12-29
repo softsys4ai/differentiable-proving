@@ -69,7 +69,7 @@ models are biased towards the distribution of their training data or not. In ord
 this concept, we define two different kinds of distribution shift as follows:
 - The first one is only for the integration task and is similar to section 4.7 described
 in Lample & Charton (2019). Meaning that we will investigate how robust our
-models trained in 5.1 are when we change their testing distribution. We report the
+models trained in section i are when we change their testing distribution. We report the
 evaluation metrics trained and tested on a different combination of training datasets
 in the following table:
 
