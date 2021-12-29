@@ -52,13 +52,24 @@ the LC model when using the 1 million samples for training.
 ## ii. **Are the results of such fine-tuning, language dependent?**
 We investigate whether different languages used to train our pretrained models impact the
 results of this transfer learning. The following table shows the evaluation of accuracy of our Marian-MT model (in percentage (%)) on the integration and differential equation solving for different pretrained languages. The highest
-accuracy is indicated by bold case in each column (task). We see that the language **has no
+accuracy is indicated by bold case in each row (task). We see that the language **has no
 major impact** on the results of this fine-tuning.
 
-| Language          | English - Romanian | English - Greek | English - Arabic | English - French | English - Spanish | Greek - English | Arabic - English | French - English | Spanish - English |
+| Language          | English  Romanian | English  Greek | English  Arabic | English  French | English  Spanish | Greek  English | Arabic  English | French  English | Spanish  English |
 |:-----------------:|:------------------:|:---------------:|:----------------:|:----------------:|:-----------------:|:---------------:|:----------------:|:----------------:|:-----------------:|
 | Integration (FWD) | 38.8             | 39.3          | 43.9           | 47.7           | 43.5            | 39.1          | 43.3           | **50.5**      | 40.4            |
 | Integration (BWD) | 67.8             | 69.5          | 71.3           | **71.4**      | 70.4            | 69.1          | 69.3           | 71.2           | 69.9            |
 | Integration (IBP) | 51.5             | 48.6          | **53.5**      | 52.5           | 51.8            | 47.9          | 50.7           | 52.7           | 51.7            |
 | ODE 1           | **23.4**        | 17.3          | 16.4           | 18.9           | 18.7            | 16.2          | 22.5           | 19.7           | 20.2            |
 | ODE 2           | 1.8              | 2.5           | 2.7            | 2.9            | **3.3**        | 2.2           | 2.3            | 2.3            | 2.0             |
+
+## iii. **How robust this fine-tuned model is with the distribution shift?**
+It is important to see whether these transformer
+models are biased towards the distribution of their training data or not. In order to evaluate
+this concept, we define two different kinds of distribution shift as follows:
+- The first one is only for the integration task and is similar to section 4.7 described
+in Lample & Charton (2019). Meaning that we will investigate how robust our
+models trained in 5.1 are when we change their testing distribution. We report the
+evaluation metrics trained and tested on a different combination of training datasets
+in the following.
+
