@@ -48,3 +48,4 @@ that in the differential equations the accuracy growth of our model suddenly get
 the LC model when using the 1 million samples for training.
 
 ![Octocat](assets/acc.png)
+
