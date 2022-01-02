@@ -73,4 +73,10 @@ models trained in section i are when we change their testing distribution. We re
 evaluation metrics trained and tested on a different combination of training datasets
 in the following table:
 
+|  |  | Forward |  |  | Backward |  |  | Integration by parts |  |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Data | Ours(mBart) |  | LC | Ours(mBart |  | LC | Ours(mBart) |  | LC |
+| FWD | 87.38 |  | 79.42 | 7.30 |  | 6.90 | 74.20 |  | 74.10 |
+| BWD | 12.82 |  | 9.28 | 92.24 |  | 83.40 | 24.02 |  | 17.60 |
+| IBP | 30.46 |  | 28.70 | 35.00 |  | 20.50 | 86.26 |  | 87.44 |
 
