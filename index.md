@@ -98,5 +98,5 @@ they represent, such as trigonometric equations, polynomial equations, and logar
     | Logarithmic | Ours | 90.9 | 75.1 | 72.4 | 35.9 | 6.8 |
     |  | LC | 87.9 | 73.3 | 88.0 | 75.6 | 72.0 |
 
-In order to have a better undrestanding of the results, we encourage the reader to read section 3 of the paper as well as the discussions in the 5th section of the paper.
+![#c5f015](https://via.placeholder.com/15/c5f015/000000?text=+) `In order to have a better undrestanding of the results, we encourage the reader to read section 3 of the paper as well as the discussions in the 5th section of the paper.`
 
