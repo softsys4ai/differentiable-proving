@@ -105,13 +105,13 @@ they represent, such as trigonometric equations, polynomial equations, and logar
 ---
 # Our Team 
 
-[Kimia Noorbakhsh](mailto:kimianoorbakhsh@gmail.com)  | [Mahdi Sharifi](mailto:msharifi@email.sc.edu)  | [Modar Sulaiman](mailto:modar.sulaiman@ut.ee)  
---- | --- | ---
-Sharif University of Technology | University of South Carolina | University of Tartu 
+| [Kimia Noorbakhsh](mailto:kimianoorbakhsh@gmail.com) | [Mahdi Sharifi](mailto:msharifi@email.sc.edu) | [Modar Sulaiman](mailto:modar.sulaiman@ut.ee) |
+|:----------------------------------------------------:|:---------------------------------------------:|:---------------------------------------------:|
+| Sharif University of Technology                      | University of South Carolina                  | University of Tartu                           |
 ![](assets/kimia.jpg) | ![](assets/mahdi.png) | ![](assets/modar.png) 
 
-[Kallol Roy](mailto:kallol.roy@ut.ee)  | [Pooyan Jamshidi](mailto:pjamshid@cse.sc.edu)  
---- | ---
-University of Tartu | University of South Carolina 
+| [Kallol Roy](mailto:kallol.roy@ut.ee) | [Pooyan Jamshidi](mailto:pjamshid@cse.sc.edu) |
+|:-------------------------------------:|:---------------------------------------------:|
+| University of Tartu                   | University of South Carolina                  |
 ![](assets/kallol.png) | ![](assets/pooyan.png) 
 
