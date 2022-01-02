@@ -100,3 +100,17 @@ they represent, such as trigonometric equations, polynomial equations, and logar
 
 ![#1589F0](https://via.placeholder.com/15/1589F0/000000?text=+) `In order to have a better undrestanding of the results, we encourage the reader to read section 3 of the paper as well as the discussions in the 5th section of the paper.`
 
+---
+[![github](https://cloud.githubusercontent.com/assets/17016297/18839843/0e06a67a-83d2-11e6-993a-b35a182500e0.png)][1][![facebook](https://cloud.githubusercontent.com/assets/17016297/18839836/0a06deb4-83d2-11e6-8078-1d0974af0f63.png)][2][![linkedin](https://cloud.githubusercontent.com/assets/17016297/18839848/0fc7e74e-83d2-11e6-8c6a-277fc9d6e067.png)][3]
+---
+# Our Team 
+label 1 | label 2 | label 3 
+--- | --- | --- 
+![](assets/kimia.jpg) | ![](assets/mahdi.png) | ![](assets/modar.png) 
+
+label 1 | label 2
+--- | ---
+![](assets/kallol.png) | ![](assets/pooyan.png) 
+
+
+:blush: `:blush:`
