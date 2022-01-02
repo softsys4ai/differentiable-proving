@@ -101,6 +101,8 @@ they represent, such as trigonometric equations, polynomial equations, and logar
 ![#1589F0](https://via.placeholder.com/15/1589F0/000000?text=+) `In order to have a better undrestanding of the results, we encourage the reader to read section 3 of the paper as well as the discussions in the 5th section of the paper.`
 
 # Our Team 
+ 
+Please do not hesitate to contact us in case you have any questions. 
 
 | [Kimia Noorbakhsh](mailto:kimianoorbakhsh@gmail.com) | [Mahdi Sharifi](mailto:msharifi@email.sc.edu) | [Modar Sulaiman](mailto:modar.sulaiman@ut.ee) |
 |:----------------------------------------------------:|:---------------------------------------------:|:---------------------------------------------:|
