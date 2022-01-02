@@ -73,10 +73,30 @@ models trained in section i are when we change their testing distribution. We re
 evaluation metrics trained and tested on a different combination of training datasets
 in the following table:
 
-|  |  | Forward |  |  | Backward |  |  | Integration by parts |  |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Data | Ours(mBart) |  | LC | Ours(mBart |  | LC | Ours(mBart) |  | LC |
-| FWD | 87.38 |  | 79.42 | 7.30 |  | 6.90 | 74.20 |  | 74.10 |
-| BWD | 12.82 |  | 9.28 | 92.24 |  | 83.40 | 24.02 |  | 17.60 |
-| IBP | 30.46 |  | 28.70 | 35.00 |  | 20.50 | 86.26 |  | 87.44 |
+    |  | Forward | Forward | Backward | Backward | Integration by parts | Integration by parts |
+    |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+    | Data | Ours(mBart) | LC | Ours(mBart | LC | Ours(mBart) | LC |
+    | FWD | 87.38 | 79.42 | 7.30 | 6.90 | 74.20 | 74.10 |
+    | BWD | 12.82 | 9.28 | 92.24 | 83.40 | 24.02 | 17.60 |
+    | IBP | 30.46 | 28.70 | 35.00 | 20.50 | 86.26 | 87.44 |
+
+- The second kind of distribution shift that we are interested in is due to the modality
+of the test dataset. This type of distribution shift was not studied by Lample &
+Charton (2019) and is a new type of distribution shifts we introduce in this paper.
+Each training sample we use on all tasks (in sections i and and ii) has a combination of all different types of equations such as polynomial, trigonometric, and logarithmic expressions. We want to see whether a model trained on this type of
+dataset can generalize to solve type-dominant functions (i.e, functions containing
+only polynomial equations or containing only trigonometric equations and so on.).
+Therefore, we generate different types of test data, varying in the kind of equation
+they represent, such as trigonometric equations, polynomial equations, and logarithmic equations (you can download this type-variant dataset from [here](https://zenodo.org/record/5546440/files/distribution_test.zip?download=1)). The results are reported in the following table:
+
+    | Testset Type | Metrics | Integration(FWD) | Integration(BWD) | Integration (IBP) | ODE 1 | ODE 2 |
+    |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+    | Polynomials | Ours | 60.6 | 67.8 | 70.7 | 39.1 | 8.9 |
+    |  | LC | 54.7 | 60.0 | 80.1 | 60.6 | 57.9 |
+    | Trigonometric | Ours | 91.9 | 87.0 | 78.9 | 48.3 | 10.6 |
+    |  | LC | 92.4 | 85.8 | 91.8 | 74.4 | 60.6 |
+    | Logarithmic | Ours | 90.9 | 75.1 | 72.4 | 35.9 | 6.8 |
+    |  | LC | 87.9 | 73.3 | 88.0 | 75.6 | 72.0 |
+
+In order to have a better undrestanding of the results, we encourage the reader to read section 3 of the paper as well as the discussions in the 5th section of the paper.
 
