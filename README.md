@@ -1,4 +1,4 @@
-# differentiable-proving
+# Pretrained Language Models are Symbolic Mathematics Solvers too
 
 This is a repository containing code and data for the paper: 
 
