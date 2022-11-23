@@ -111,6 +111,7 @@ def is_valid_expr(s):
     for v in EVAL_VALUES:
         try:
             local_dict = {s: (v + 1e-4 * i) for i, s in enumerate(EVAL_SYMBOLS)}
+            import numexpr as ne
             value = ne.evaluate(s, local_dict=local_dict).item()
             if not (math.isnan(value) or math.isinf(value)):
                 return True

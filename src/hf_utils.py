@@ -1,6 +1,7 @@
 from datasets import Dataset
 import pandas as pd
 import io
+import numpy as np
 from src.envs.sympy_utils import simplify
 from enum import Enum
 import random
@@ -101,6 +102,38 @@ def create_dataset_test_new(path, language):
 
 evaluationType = Enum('evaluationType', 'Training Validation Test')
 
+def ensemble_evaluation(totalNumberOfEvaluation, tokenized_datasets, evalType, tokenizer, model, batch_size, env, num_beams, language):
+    count_nonMathExpressionEstimation = 0
+    numberOfBatches = int(totalNumberOfEvaluation / batch_size) 
+    predictions = [False] * totalNumberOfEvaluation
+    for j_batchIndex in range(numberOfBatches):
+        text = [tokenized_datasets['translation'][i]['en'] for i in range(
+            j_batchIndex * batch_size, (j_batchIndex+1) * batch_size)]
+        
+        input_batch = tokenizer(text, return_tensors="pt", padding=True)
+        try:
+            outputs = model.generate(**input_batch.to(device='cuda'), num_beams = num_beams)
+            decoded_batch = [tokenizer.decode(
+                t, skip_special_tokens=True) for t in outputs]
+            for k_indexInsideBatch in range(batch_size):
+                decoded = decoded_batch[k_indexInsideBatch]
+                ii_indexInWhole = j_batchIndex * batch_size + k_indexInsideBatch
+                actual = tokenized_datasets['translation'][ii_indexInWhole][language]
+                try:
+                    actual_s = convert_to_sympy(actual, env)
+                    decoded_s = convert_to_sympy(decoded, env)
+                    res = True if simplify(
+                        decoded_s - actual_s, seconds=1) == 0 else False
+                    if res == True:
+                        predictions[ii_indexInWhole] = True
+                except:
+                    count_nonMathExpressionEstimation += 1
+                    continue
+        except:
+            totalNumberOfEvaluation -= 1
+    # print accuracy
+    acc = 100 * sum(predictions) / totalNumberOfEvaluation
+    return predictions      
 
 def evaluation_function(totalNumberOfEvaluation, tokenized_datasets, evalType, tokenizer, model, batch_size, env, num_beams, language):
     count_trueEstimation = 0

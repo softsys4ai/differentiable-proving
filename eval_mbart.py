@@ -8,14 +8,16 @@ import pandas as pd
 from datasets import Dataset
 import torch
 import os
-from datasets import load_metric
+from datasets import load_dataset, load_metric
 import io
 import numpy as np
 import sympy as sp
-from src.utils import AttrDict
+from src.utils import AttrDict 
+from src.hf_utils import evaluation_function, create_dataset_test, postprocess_text, ensemble_evaluation
+from enum import Enum
 from gmp import one_shot_prune
-from src.hf_utils import create_dataset_train, create_dataset_test
-torch.cuda.empty_cache()
+# Required Functions
+
 
 def preprocess_function_new(examples):
     inputs = [prefix + ex[source_lang] for ex in examples["translation"]]
@@ -30,16 +32,15 @@ def preprocess_function_new(examples):
 
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
+
 import argparse
 
 parser = argparse.ArgumentParser(description='Differentiable Proving Evaluator')
 parser.add_argument('-l', '--language', default='ro', help='SPECIFY LANGUAGE HERE')
-parser.add_argument('-tr', '--train_file', default= 'data/train/prim_fwd_100k.train', help='SPECIFY PATH OF TRAIN DATA HERE')
-parser.add_argument('-v', '--valid_file', default='data/valid/prim_fwd.valid', help='SPECIFY PATH OF VALID DATA HERE')
 parser.add_argument('-t', '--test_file', default='prim_fwd_1k', help='SPECIFY PATH OF TEST DATA HERE')
-parser.add_argument('-isen', '--is_source_en', help='IS SOURCE LANGUAGE ENGLISH?', action='store_true')
+parser.add_argument('-m', '--model', default='mbart_prim_fwd_1M_en_ro', help='SPECIFY PRE-TRAINED MODEL HERE')
 args = parser.parse_args()
-
+    
 if torch.cuda.is_available():
     device = 'cuda'
 else:
@@ -69,27 +70,24 @@ params = params = AttrDict({
 
 language = args.language # SPECIFY LANGUAGE HERE.
 env = build_env(params)
-path1 = args.train_file    # SPECIFY PATH OF TRAINING DATA HERE.
-train_dataset = create_dataset_train(path=path1, count=100000, language = language)
-path2 = args.valid_file    # SPECIFY PATH OF VALIDATION DATA HERE. WE WILL USE ALL OF VALIDATION DATA, NO NEED TO SPECIFY COUNT.
-valid_dataset = create_dataset_test(path=path2, language= language)
 
 """# Tokenizing the Data"""
 Model_Type = 'mbart'
+is_source_en = False
 
 if Model_Type == 'mbart':
     model_checkpoint = "facebook/mbart-large-en-{}".format(language) # SPECIFY PRE-TRAINED MODEL HERE. 
     metric = load_metric("sacrebleu")
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-en-ro", src_lang="en_XX", tgt_lang="ro_RO")
 elif Model_Type == 'Marian':
-    if args.is_source_en:
-        print('Source Language is English')
+    if is_source_en:
         model_checkpoint = "Helsinki-NLP/opus-mt-en-{}".format(language)
     else:
-        print('Source Language is {}'.format(language))
         model_checkpoint = "Helsinki-NLP/opus-mt-{}-en".format(language)
     metric = load_metric("sacrebleu")
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=False)
+
+
 
 if model_checkpoint in ["t5-small", "t5-base", "t5-larg", "t5-3b", "t5-11b"]:
     prefix = "not important."
@@ -98,61 +96,25 @@ else:
 
 """# Create the Final Data Set"""
 
-datasetM = {'train': train_dataset,
-            'validation': valid_dataset}
+
 max_input_length = 1024 # Set to 512 if it is Marian-MT
 max_target_length = 1024 # Set to 512 if it is Marian-MT
 source_lang = "en"
 target_lang = language
 
-tokenized_datasets_train = datasetM['train'].map(preprocess_function_new, batched=True, num_proc = 48)
-tokenized_datasets_valid = datasetM['validation'].map(preprocess_function_new, batched=True)
 
-"""#  Fine-tuning the model"""
-
-model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
-# sparcify model to 50%
-model = one_shot_prune(model, 0.5)
-model.to('cuda')
-# freeze all layers except the norm layer
-# for name, param in model.named_parameters():
-#     if 'norm' or 'attn' in name:
-#         param.requires_grad = True
-#     else:
-#         param.requires_grad = False
-
-if args.is_source_en:
-    name = '{}_{}_{}_{}'.format(args.train_file, args.test_file, 'en', language)
-else:
-    name = '{}_{}_{}_{}'.format(args.train_file,args.test_file, language, 'en')
-    
-
-
-batch_size = 32
-args = Seq2SeqTrainingArguments(
-    "test-translation_{}".format(name),
-    evaluation_strategy="epoch",
-    learning_rate=1e-4,
-    per_device_train_batch_size=batch_size,
-    per_device_eval_batch_size=batch_size,
-    weight_decay=0.01,
-    save_total_limit=3,
-    num_train_epochs=15,
-    predict_with_generate=False,
-    fp16=True,
-)
-
-data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
-trainer = Seq2SeqTrainer(
-    model,
-    args,
-    train_dataset=tokenized_datasets_train,
-    eval_dataset=tokenized_datasets_valid,
-    data_collator=data_collator,
-    tokenizer=tokenizer
-)
-
-
-trainer.train()
-model_name = name # SPECIFY MODEL SAVING NAME HERE.
-torch.save(model, 'checkpoints/{}'.format(model_name))
+      
+torch.cuda.empty_cache()
+print(args.test_file)
+path = "data/test/{}.test".format(args.test_file) # SPECIFY PATH OF TEST DATA HERE.
+test_dataset = create_dataset_test(path=path, language= language)  
+datasetM = {'test': test_dataset}
+tokenized_datasets_test = datasetM['test'].map(preprocess_function_new, batched=True)
+print(args.model)
+saved_path = 'models/{}'.format(args.model)
+model = torch.load(saved_path)  # SPECIFY LOADING PATH HERE.
+evaluationType = Enum('evaluationType', 'Training Validation Test')
+batch_size = 8
+evaluation_function(1000, tokenized_datasets_test, evaluationType.Test, tokenizer, model, batch_size, env, num_beams=1, language=language)
+modelp = one_shot_prune(model, 0.6)
+evaluation_function(1000, tokenized_datasets_test, evaluationType.Test, tokenizer, modelp, batch_size, env, num_beams=1, language=language)

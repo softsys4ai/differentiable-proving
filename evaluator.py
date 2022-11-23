@@ -13,7 +13,7 @@ import io
 import numpy as np
 import sympy as sp
 from src.utils import AttrDict 
-from src.hf_utils import evaluation_function, create_dataset_test, postprocess_text
+from src.hf_utils import evaluation_function, create_dataset_test, postprocess_text, ensemble_evaluation
 from enum import Enum
 # Required Functions
 
@@ -32,7 +32,14 @@ def preprocess_function_new(examples):
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
 
+import argparse
 
+parser = argparse.ArgumentParser(description='Differentiable Proving Evaluator')
+parser.add_argument('-l', '--language', default='ro', help='SPECIFY LANGUAGE HERE')
+parser.add_argument('-t', '--test_file', default='prim_bwd_1k', help='SPECIFY PATH OF TEST DATA HERE')
+parser.add_argument('-m', '--model', default='prim_bwd_en_ro_100k_wrong_sin_cos', help='SPECIFY PRE-TRAINED MODEL HERE')
+args = parser.parse_args()
+    
 if torch.cuda.is_available():
     device = 'cuda'
 else:
@@ -55,16 +62,16 @@ params = params = AttrDict({
     'max_ops_G': 15,
     'clean_prefix_expr': True,
     'rewrite_functions': '',
-    'tasks': 'prim_fwd',
+    'tasks': 'prim_bwd',
     'operators': 'add:10,sub:3,mul:10,div:5,sqrt:4,pow2:4,pow3:2,pow4:1,pow5:1,ln:4,exp:4,sin:4,cos:4,tan:4,asin:1,acos:1,atan:1,sinh:1,cosh:1,tanh:1,asinh:1,acosh:1,atanh:1',
 })
 
-language = 'ro' # SPECIFY LANGUAGE HERE.
+language = args.language # SPECIFY LANGUAGE HERE.
 env = build_env(params)
 
 """# Tokenizing the Data"""
-Model_Type = 'mbart'
-is_source_en = True
+Model_Type = 'Marian'
+is_source_en = False
 
 if Model_Type == 'mbart':
     model_checkpoint = "facebook/mbart-large-en-{}".format(language) # SPECIFY PRE-TRAINED MODEL HERE. 
@@ -88,20 +95,20 @@ else:
 """# Create the Final Data Set"""
 
 
-max_input_length = 1024 # Set to 512 if it is Marian-MT
-max_target_length = 1024 # Set to 512 if it is Marian-MT
+max_input_length = 512 # Set to 512 if it is Marian-MT
+max_target_length = 512 # Set to 512 if it is Marian-MT
 source_lang = "en"
 target_lang = language
 
 
       
 torch.cuda.empty_cache()
-path = "data/test/prim_fwd_1k.test" # SPECIFY PATH OF TEST DATA HERE.
+path = "data/test/{}.test".format(args.test_file) # SPECIFY PATH OF TEST DATA HERE.
 test_dataset = create_dataset_test(path=path, language= language)  
 datasetM = {'test': test_dataset}
 tokenized_datasets_test = datasetM['test'].map(preprocess_function_new, batched=True)
-saved_path = 'models/mbart_prim_fwd_10k_en_ro'
+saved_path = 'models/{}'.format(args.model)
 model = torch.load(saved_path)  # SPECIFY LOADING PATH HERE.
 evaluationType = Enum('evaluationType', 'Training Validation Test')
 batch_size = 8
-evaluation_function(1000, tokenized_datasets_test, evaluationType.Test, tokenizer, model, batch_size, env, num_beams= 1, language= language)
+ensemble_evaluation(1000, tokenized_datasets_test, evaluationType.Test, tokenizer, model, batch_size, env, num_beams= 1, language= language)
